@@ -1,0 +1,6 @@
+.agents/
+.example-datasets/
+dataset/
+.venv/
+main.tex
+__pycache__/
