@@ -2,3 +2,4 @@
 .example-datasets/
 dataset/
 .venv/
+__pycache__/
