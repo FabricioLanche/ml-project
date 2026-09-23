@@ -296,21 +296,18 @@ fig.suptitle("Distribución del target — attack_cat")
 fig.tight_layout()
 _guardar_fig(fig, "fig01_distribucion_clases.png")
 
-print("\n[fig02] boxplots top 9 por % de outliers")
-out_pct = pd.DataFrame({
-    "columna": num_cols,
-    "%": [_iqr_outliers(df[c].astype("float64")) / N * 100 for c in num_cols],
-}).nlargest(9, "%")
-top9 = out_pct["columna"].tolist()
-print(f"  top 9: {top9}")
+print("\n[fig02] boxplots de la selección descriptiva en escala log")
+SEL_BOX = ["dur", "sbytes", "sttl", "trans_depth", "Sjit", "Sintpkt",
+           "tcprtt", "ct_state_ttl", "ct_srv_src"]
+print(f"  selección: {SEL_BOX}")
 fig, axes = plt.subplots(3, 3, figsize=(15, 10))
-for ax, col in zip(axes.ravel(), top9):
+for ax, col in zip(axes.ravel(), SEL_BOX):
     datos = np.log10(df[col].astype("float64").dropna().to_numpy() + 1)
     ax.boxplot(datos, vert=True)
     ax.set_xticks([1])
     ax.set_xticklabels([col], fontsize=10)
     ax.set_ylabel("log10(x+1)", fontsize=9)
-fig.suptitle("Boxplot del top 9 de variables numéricas por % de outliers")
+fig.suptitle("Boxplot de las variables numéricas seleccionadas (escala log)")
 fig.tight_layout()
 _guardar_fig(fig, "fig02_boxplot_outliers.png")
 
