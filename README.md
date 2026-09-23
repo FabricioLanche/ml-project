@@ -28,23 +28,37 @@ ml-project/
 └── dataset/          # Datos UNSW-NB15 (no versionado, ver sección Dataset)
 ```
 
+## Requisitos
+
+- **Python 3.11 o superior** (recomendado: Python 3.12). Las versiones fijadas en `requirements.txt` (`pandas` 3.0.x, `numpy` 2.5.x) solo están disponibles para Python ≥ 3.11. Verificar: `python3 --version` en Linux o `py --version` en Windows.
+
 ## Reproducción
 
-1. Preparar el entorno e instalar las dependencias (`pandas`, `numpy`, `matplotlib` y `kagglehub` con Python 3.12):
+1. Instalar las dependencias (`pandas`, `numpy`, `matplotlib` y `kagglehub`). El uso de un entorno virtual es **opcional pero recomendado** para no afectar el intérprete global. Lo importante es instalar las dependencias con el mismo intérprete que ejecutará el script o el notebook.
+
+   **Linux / WSL (Ubuntu):** aquí el comando es `python3` (no `python`).
 
    ```bash
-   python -m venv .venv
+   python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
+   python3 -m pip install -r requirements.txt
+   ```
+
+   **Windows (PowerShell o CMD):**
+
+   ```powershell
+   py -m venv .venv
+   .venv\Scripts\activate
+   python -m pip install -r requirements.txt
    ```
 
 2. Ejecutar el análisis exploratorio (genera las tablas CSV y figuras en `output/`):
 
-   - **Notebook**: abrir `notebooks/eda.ipynb` en Jupyter y ejecutar todas las celdas.
-   - **Script**: equivalente, usado durante el desarrollo y debugging.
+   - **Notebook**: abrir `notebooks/eda.ipynb` en Jupyter / VSCode y ejecutar todas las celdas. Asegurarse de que el kernel use el intérprete del entorno activado (en VSCode: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir el del `.venv`). Si el kernel usa otro Python, fallará la importación de los paquetes.
+   - **Script**: equivalente al notebook, usado durante el desarrollo y debugging.
 
      ```bash
-     python notebooks/eda.py
+     python3 notebooks/eda.py
      ```
 
 ## Dataset
