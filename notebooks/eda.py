@@ -265,6 +265,30 @@ eta = pd.DataFrame({
 }).sort_values("eta2", ascending=False)
 _guardar_csv(eta, "eta_attack_cat.csv")
 
+print("\n[07] concentración de filas duplicadas por clase del target")
+# Las filas byte-idénticas se agrupan por hash de las 49 columnas (sin attack_cat ni
+# Label) para medir cuántos flujos distintos representa cada clase.
+_colas_feat = [c for c in df.columns if c not in ("attack_cat", "Label")]
+_hash = pd.util.hash_pandas_object(df[_colas_feat], index=False)
+_es_dup = df.duplicated(keep="first")
+_grupos = pd.DataFrame({"clase": df["attack_cat"], "hash": _hash, "dup": _es_dup})
+dup_clase = pd.DataFrame({
+    "n_original": _grupos.groupby("clase", observed=True).size(),
+    "n_duplicadas": _grupos.groupby("clase", observed=True)["dup"].sum(),
+    "n_grupos_distintos": _grupos.groupby("clase", observed=True)["hash"].nunique(),
+})
+dup_clase["%_duplicadas"] = (dup_clase["n_duplicadas"] / dup_clase["n_original"] * 100).round(2)
+dup_clase["copias_por_grupo"] = (dup_clase["n_original"] / dup_clase["n_grupos_distintos"]).round(2)
+dup_clase["n_sin_duplicar"] = dup_clase["n_original"] - dup_clase["n_duplicadas"]
+dup_clase["%_dataset_original"] = (dup_clase["n_original"] / N * 100).round(2)
+dup_clase["%_dataset_sin_duplicar"] = (dup_clase["n_sin_duplicar"] / dup_clase["n_sin_duplicar"].sum() * 100).round(2)
+dup_clase = dup_clase.sort_values("%_duplicadas", ascending=False).reset_index()
+print(f"  duplicados totales: {int(_es_dup.sum()):,} ({_es_dup.mean() * 100:.2f}%)")
+print(dup_clase.to_string(index=False))
+print(f"  Benign: {dup_clase.loc[dup_clase.clase == 'Benign', '%_dataset_original'].iat[0]:.2f}% del dataset"
+      f" -> {dup_clase.loc[dup_clase.clase == 'Benign', '%_dataset_sin_duplicar'].iat[0]:.2f}% tras eliminar duplicados")
+_guardar_csv(dup_clase, "duplicados_por_clase.csv")
+
 
 # ===========================================================================
 # 2. FIGURAS DEL INFORME (renumeradas en orden de aparición)

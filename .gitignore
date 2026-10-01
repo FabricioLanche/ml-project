@@ -4,3 +4,4 @@ dataset/
 .venv/
 main.tex
 __pycache__/
+output/preprocessed/
