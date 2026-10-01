@@ -1,0 +1,5 @@
+clase,train,val,test
+Analysis,1912,430,335
+Backdoors,1585,391,353
+Shellcode,990,295,226
+Worms,113,37,24

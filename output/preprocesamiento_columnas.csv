@@ -1,0 +1,54 @@
+columna,accion,motivo
+srcip,eliminar,"identidad de host, 43 valores únicos: memoriza hosts"
+sport,eliminar,129 225 categorías junto a dsport: se derivan rangos
+dstip,eliminar,"identidad de host, 47 valores únicos: memoriza hosts"
+dsport,eliminar,129 225 categorías junto a sport: se derivan rangos
+proto,one-hot,categórica de baja cardinalidad
+state,one-hot,categórica de baja cardinalidad
+dur,numerica,log1p condicional + estandarización
+sbytes,numerica,log1p condicional + estandarización
+dbytes,numerica,log1p condicional + estandarización
+sttl,numerica,log1p condicional + estandarización
+dttl,numerica,log1p condicional + estandarización
+sloss,numerica,log1p condicional + estandarización
+dloss,numerica,log1p condicional + estandarización
+service,one-hot,categórica de baja cardinalidad
+Sload,numerica,log1p condicional + estandarización
+Dload,numerica,log1p condicional + estandarización
+Spkts,numerica,log1p condicional + estandarización
+Dpkts,numerica,log1p condicional + estandarización
+swin,numerica,log1p condicional + estandarización
+dwin,numerica,log1p condicional + estandarización
+stcpb,numerica,log1p condicional + estandarización
+dtcpb,numerica,log1p condicional + estandarización
+smeansz,numerica,log1p condicional + estandarización
+dmeansz,numerica,log1p condicional + estandarización
+trans_depth,numerica,log1p condicional + estandarización
+res_bdy_len,numerica,log1p condicional + estandarización
+Sjit,numerica,log1p condicional + estandarización
+Djit,numerica,log1p condicional + estandarización
+Stime,eliminar,marca de tiempo absoluta: correlaciona con la sesión de captura
+Ltime,eliminar,marca de tiempo absoluta: correlaciona con la sesión de captura
+Sintpkt,numerica,log1p condicional + estandarización
+Dintpkt,numerica,log1p condicional + estandarización
+tcprtt,numerica,log1p condicional + estandarización
+synack,numerica,log1p condicional + estandarización
+ackdat,numerica,log1p condicional + estandarización
+is_sm_ips_ports,binaria,indicador predefinido
+ct_state_ttl,numerica,log1p condicional + estandarización
+ct_flw_http_mthd,imputar,blanco estructural o token corrupto
+is_ftp_login,imputar,blanco estructural o token corrupto
+ct_ftp_cmd,imputar,blanco estructural o token corrupto
+ct_srv_src,numerica,log1p condicional + estandarización
+ct_srv_dst,numerica,log1p condicional + estandarización
+ct_dst_ltm,numerica,log1p condicional + estandarización
+ct_src_ ltm,numerica,log1p condicional + estandarización
+ct_src_dport_ltm,numerica,log1p condicional + estandarización
+ct_dst_sport_ltm,numerica,log1p condicional + estandarización
+ct_dst_src_ltm,numerica,log1p condicional + estandarización
+attack_cat,eliminar,variable objetivo
+Label,eliminar,versión binaria del objetivo (Benign <=> Label=0)
+sport_efimero,derivar,ingeniería de puerto (baja cardinalidad)
+sport_franja,derivar,ingeniería de puerto (baja cardinalidad)
+dsport_efimero,derivar,ingeniería de puerto (baja cardinalidad)
+dsport_franja,derivar,ingeniería de puerto (baja cardinalidad)
