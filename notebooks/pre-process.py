@@ -278,12 +278,33 @@ print("  log1p aplicado.")
 # 7. PERSISTENCIA EN PARQUET
 # ===========================================================================
 print("\n=== 7. PERSISTENCIA ===")
+# La etiqueta se persiste junto a las features para que la etapa de modelado no tenga
+# que releer los CSV originales. Se guardan dos columnas: 'label', que es el objetivo
+# numérico que consumen los estimadores de MLlib, y 'attack_cat', que es el nombre de
+# la clase y se usa solo con fines de reporte. Ninguna de las dos entra al
+# VectorAssembler, por lo que no hay fuga de la etiqueta.
+CLASES = sorted(df["attack_cat"].unique().tolist())
+MAPA = {c: i for i, c in enumerate(CLASES)}
+print(f"  codificación del objetivo ({len(CLASES)} clases):")
+for c, i in MAPA.items():
+    print(f"    {i:2d} -> {c}")
+_obj = df["attack_cat"].map(MAPA).astype("int8")
+_duplicada = df.duplicated(keep=False).astype("int8")
+
 PROC_DIR.mkdir(parents=True, exist_ok=True)
 for split, idx in (("train", idx_train), ("val", idx_val), ("test", idx_test)):
-    sub = X.iloc[idx]
+    sub = pd.concat([
+        X.iloc[idx].reset_index(drop=True),
+        pd.DataFrame({
+            "label": _obj.iloc[idx].to_numpy(),
+            "attack_cat": df["attack_cat"].iloc[idx].to_numpy(),
+            "es_duplicado": _duplicada.iloc[idx].to_numpy(),
+        }),
+    ], axis=1)
     destino = PROC_DIR / f"{split}.parquet"
     sub.to_parquet(destino, index=False, compression="snappy")
     print(f"  {split:5s} {len(sub):>9,} filas × {sub.shape[1]} columnas "
+          f"({X.shape[1]} features + label + attack_cat + es_duplicado) "
           f"→ {destino.stat().st_size / 1e6:7.1f} MB")
 
 meta = {
@@ -298,6 +319,7 @@ meta = {
     "columnas_eliminadas": ELIMINAR,
     "umbral_skew": UMBRAL_SKEW,
     "variables_log1p": LOG1P_COLS,
+    "clases": {str(k): v for k, v in MAPA.items()},
     "blancos_estructurales_imputados_a_cero": BLANCOS_ESTRUCTURALES,
     "n_columnas_modelo": int(X.shape[1]),
 }
@@ -367,7 +389,9 @@ assert _cruce == 0, "Hay filas idénticas en particiones distintas"
 
 print("\n  [V6] sin fuga de la etiqueta")
 assert "attack_cat" not in X.columns and "Label" not in X.columns
+assert "label" not in X.columns and "attack_cat" not in X.columns
 print("  attack_cat y Label ausentes del espacio de características: OK")
+print("  la etiqueta se persiste aparte (label, attack_cat) y no entra al VectorAssembler")
 
 print("\nPreprocesamiento completado.")
 print(f"Filas conservadas: {n:,} (duplicados NO eliminados: {int(df.duplicated().sum()):,})")
