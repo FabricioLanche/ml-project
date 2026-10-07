@@ -7,9 +7,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 BASE = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE / "dataset"
-OUT_DIR = BASE / "output"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR = BASE / "data" / "raw"
+TABLAS_DIR = BASE / "data" / "eda" / "tablas"
+FIGURAS_DIR = BASE / "data" / "eda" / "figuras"
+TABLAS_DIR.mkdir(parents=True, exist_ok=True)
+FIGURAS_DIR.mkdir(parents=True, exist_ok=True)
 
 AZUL, ROJO = "#2e86c1", "#c0392b"
 plt.rc("font", size=10)
@@ -17,7 +19,7 @@ plt.rc("font", size=10)
 KAGGLE_DATASET = "harshwardhanbhangale/unsw-complete-dataset"
 REQ = [f"UNSW-NB15_{i}.csv" for i in range(1, 5)]
 if all((DATA_DIR / f).exists() for f in REQ):
-    print("Dataset ya presente en dataset/")
+    print("Dataset ya presente en data/raw/")
 else:
     print("Descargando dataset desde Kaggle…")
     import kagglehub
@@ -111,14 +113,14 @@ N = len(df)
 # Utilidades
 # ===========================================================================
 def _guardar_fig(fig, nombre):
-    salida = OUT_DIR / nombre
+    salida = FIGURAS_DIR / nombre
     fig.savefig(salida, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  → {salida.name}")
 
 
 def _guardar_csv(tabla, nombre):
-    tabla.to_csv(OUT_DIR / nombre, index=False)
+    tabla.to_csv(TABLAS_DIR / nombre, index=False)
     print(f"  → {nombre}")
     return tabla
 
@@ -293,7 +295,7 @@ _guardar_csv(dup_clase, "duplicados_por_clase.csv")
 # ===========================================================================
 # 2. FIGURAS DEL INFORME (renumeradas en orden de aparición)
 # ===========================================================================
-print("\n=== 2. FIGURAS (guardadas en output/) ===")
+print("\n=== 2. FIGURAS (guardadas en data/eda/figuras/) ===")
 
 print("\n[fig01] distribución del target")
 def _barras_clases(ax, s, titulo, leyenda=False):
@@ -375,4 +377,4 @@ heatmap(mat, ["Label"] + ct_cols, ["Label"] + ct_cols,
         "fig05_ct_vs_target.png")
 plt.close("all")
 
-print("\nOutputs del informe regenerados en output/")
+print("\nOutputs del informe regenerados en data/eda/")
