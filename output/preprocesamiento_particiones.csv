@@ -1,4 +1,0 @@
-particion,n,n_clases,benign_pct
-train,1905077,10,89.91
-val,380967,10,78.98
-test,254003,10,80.68

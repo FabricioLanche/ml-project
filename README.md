@@ -23,12 +23,21 @@ ml-project/
 │   ├── eda.py            # Versión en script (desarrollo y debugging)
 │   ├── pre-process.ipynb # Preprocesamiento e ingeniería de características
 │   └── pre-process.py    # Versión en script (desarrollo y debugging)
-├── output/
-│   ├── *.csv             # Tablas generadas
-│   ├── fig*.png          # Figuras del análisis exploratorio
-│   └── preprocessed/     # Particiones train/val/test en parquet + metadatos.json
+├── data/                 # Datos generados (no versionado)
+│   ├── raw/              # CSVs originales de UNSW-NB15
+│   ├── eda/              # Salidas del EDA (no del entrenamiento)
+│   │   ├── tablas/       # Tablas *.csv
+│   │   └── figuras/      # Figuras *.png
+│   └── preprocessed/     # Entrada del flujo de entrenamiento
+│       ├── base/         # Split 85/15 + folds, features sin transformar
+│       └── grid/         # Variantes de preprocesamiento por celda
+├── results/              # Salidas del entrenamiento (métricas, modelos)
+│   ├── fase1_preproc/
+│   ├── fase2_hiperparams/
+│   └── fase3_test/
+├── docs/                 # Documento del informe (LaTeX)
 ├── requirements.txt      # Dependencias del entorno
-└── dataset/              # Datos UNSW-NB15 (no versionado, ver sección Dataset)
+└── .agents/              # Documentos de trabajo internos
 ```
 
 ## Dependencias
@@ -70,7 +79,7 @@ necesita residir íntegro en memoria.
    python -m pip install -r requirements.txt
    ```
 
-2. Ejecutar el análisis exploratorio (genera las tablas CSV y figuras en `output/`):
+2. Ejecutar el análisis exploratorio (genera las tablas en `data/eda/tablas/` y las figuras en `data/eda/figuras/`):
 
    - **Notebook**: abrir `notebooks/eda.ipynb` en Jupyter / VSCode y ejecutar todas las celdas. Asegurarse de que el kernel use el intérprete del entorno activado (en VSCode: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir el del `.venv`). Si el kernel usa otro Python, fallará la importación de los paquetes.
    - **Script**: equivalente al notebook, usado durante el desarrollo y debugging.
@@ -79,10 +88,12 @@ necesita residir íntegro en memoria.
      python3 notebooks/eda.py
      ```
 
-3. Ejecutar el preprocesamiento. Genera las particiones en `output/preprocessed/` y ejecuta
-   seis verificaciones de integridad (presencia de las diez clases, alineación de los cortes
-   temporales, ausencia de solapamiento de la ventana `ct_*` entre particiones y ausencia de
-   filas idénticas repartidas entre conjuntos).
+3. Ejecutar el preprocesamiento. Genera, en `data/preprocessed/`, el split cronológico 85/15
+   (`base/fold_1..5.parquet` y `base/test.parquet`) y las variantes de la rejilla
+   (`grid/<celda>/r1..r5/`). Además ejecuta las verificaciones de integridad (presencia de
+   las diez clases, alineación de los cortes temporales, ausencia de solapamiento de la
+   ventana `ct_*` entre particiones y ausencia de filas idénticas repartidas entre
+   conjuntos).
 
    ```bash
    python3 notebooks/pre-process.py
@@ -92,21 +103,21 @@ necesita residir íntegro en memoria.
 
 | Archivo | Contenido |
 |---|---|
-| `output/preprocessed/{train,val,test}.parquet` | 45 columnas predictoras, sin duplicados eliminados |
-| `output/preprocessed/metadatos.json` | Cortes temporales, modas imputadas, variables transformadas y decisiones aplicadas |
-| `output/preprocesamiento_columnas.csv` | Acción aplicada a cada columna y su motivo |
-| `output/preprocesamiento_log1p.csv` | Asimetría por variable antes y después de `log1p` |
-| `output/preprocesamiento_tabla_clases.csv` | Recuento de cada categoría en cada partición |
-| `output/duplicados_por_clase.csv` | Concentración de filas duplicadas por categoría |
+| `data/preprocessed/base/fold_1..5.parquet` | Particiones del 85 % de entrenamiento, features sin transformar |
+| `data/preprocessed/base/test.parquet` | 15 % de prueba, sellado hasta la fase 3 |
+| `data/preprocessed/base/metadatos.json` | Cortes temporales, decisiones de limpieza y codificación del objetivo |
+| `data/preprocessed/grid/<celda>/r1..r5/` | Variante de cada celda de la rejilla, con `train` y `val` por ronda |
+| `data/preprocessed/grid/manifiesto.csv` | Receta que define cada celda (`G00`…`G14`) |
 
 El formato parquet es obligatorio: preserva los tipos `Int8`, `Int16`, `Float32` y `boolean`
-de Pandas, que un CSV destruiría al releerlos.
+de Pandas, que un CSV destruiría al releerlos. Los detalles del esquema de entrenamiento
+están en [`.agents/PROPUESTA_ENTRENAMIENTO.md`](.agents/PROPUESTA_ENTRENAMIENTO.md).
 
 ## Dataset
 
 UNSW-NB15 (Moustafa y Slay, 2015): tráfico de red capturado en el Cyber Range Lab de la ACCS. Consta de 4 archivos CSV con 2,540,047 registros y 49 columnas.
 
-La primera ejecución del análisis exploratorio descarga el dataset desde Kaggle (`harshwardhanbhangale/unsw-complete-dataset`) a la carpeta `dataset/`. Esta carpeta está excluida del repositorio (`.gitignore`).
+La primera ejecución del análisis exploratorio descarga el dataset desde Kaggle (`harshwardhanbhangale/unsw-complete-dataset`) a la carpeta `data/raw/`. Esta carpeta está excluida del repositorio (`.gitignore`).
 
 ## Decisiones de preprocesamiento
 
@@ -119,4 +130,4 @@ El detalle argumentado de cada decisión, con los datos que la motivan, se encue
 | Blancos estructurales se imputan a 0 | El blanco codifica el archivo de origen (0 %, 43.86 %, 98.49 %, 98.49 %), no el protocolo del flujo |
 | Puertos se derivan a rangos | `Benign` usa 64 581 puertos distintos y `Analysis` solo 3: el valor crudo permite memorizar la asociación puerto-clase |
 | `Stime` y `Ltime` se eliminan | Describen el instante de la captura, no el comportamiento del flujo |
-| Partición cronológica 75/15/10 | Con partición aleatoria, el contexto de la ventana `ct_*` de una fila de prueba queda dentro de train |
+| Split cronológico 85/15 + K-Fold | Con partición aleatoria, el contexto de la ventana `ct_*` de una fila de prueba queda dentro de train; el 15 % final queda sellado y la búsqueda usa K-Fold sobre el 85 % |
