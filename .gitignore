@@ -3,5 +3,6 @@
 **/raw/UNSW*
 results/
 .venv/
+data/preprocessed
 main.tex
 __pycache__/

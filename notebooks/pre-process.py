@@ -17,7 +17,7 @@ Produce, en `data/preprocessed/`:
     - `<celda>/r1..r5/{train,val}.parquet`: una variante por celda y por ronda. En la
       ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train) y se
       aplica congelada a `train` y a `val` (el fold `f`).
-    - `<celda>/r*/parametros.json`: los valores fiteados (modas, p99, columnas log1p,
+    - `<celda>/r*/parametros.json`: los valores fiteados (modas, columnas log1p,
       categorías de `proto` conservadas).
     - `manifiesto.csv`: qué receta define cada celda.
 
@@ -126,28 +126,25 @@ K = 5
 FRACCION_TRAIN = 0.85
 SEMILLA = 42
 UMBRAL_PROTO_COLA = 0.01
+UMBRAL_LOG1P = 1.0
 
 # ===========================================================================
-# Rejilla de preprocesamiento (14 celdas)
+# Rejilla de preprocesamiento (9 celdas)
 # ===========================================================================
-# Ejes: log1p (None | umbral |s|), winsor (p99), ct_* (con/sin), dedup,
-# derivados de puerto, cola de proto, imputación de tokens corruptos.
-_BASE_CELL = dict(log1p=1.0, winsor=False, ct=True, dedup=False,
-                  puertos="ambos", proto="completo", imput="moda")
+# Ejes: ct_* (con/sin), dedup, derivados de puerto, cola de proto. El `log1p` (umbral 1),
+# el `StandardScaler` y la imputación de tokens corruptos por la moda son transversales:
+# se aplican siempre, no se buscan. El winsorizado p99 se descartó por solapar con
+# `log1p`.
+_BASE_CELL = dict(ct=True, dedup=False, puertos="ambos", proto="completo")
 
 _OVERRIDES = {
     "G00": {},                                                            # base
-    "G01": dict(log1p=None),                                             # sin log1p
-    "G02": dict(log1p=3.0, winsor=True),                                 # log1p>3 + winsor
-    "G03": dict(winsor=True),                                            # log1p>1 + winsor
     "G05": dict(ct=False),                                               # sin ct_*
     "G06": dict(dedup=True),                                             # deduplicar
     "G07": dict(puertos="solo_franja"),                                  # solo franja
     "G08": dict(puertos="solo_efimero"),                                 # solo efímero
     "G09": dict(puertos="ninguno"),                                      # sin derivados
     "G10": dict(proto="colapsar"),                                       # cola de proto
-    "G11": dict(imput="cero"),                                           # imputar a 0
-    "G12": dict(log1p=None, ct=False),
     "G13": dict(dedup=True, ct=False),
     "G14": dict(dedup=True, proto="colapsar"),
 }
@@ -196,16 +193,16 @@ def _franja(puerto: pd.Series) -> pd.Categorical:
     )
 
 
-def _rellenar_nulos(df: pd.DataFrame, celda: dict, params: dict) -> pd.DataFrame:
+def _rellenar_nulos(df: pd.DataFrame, params: dict) -> pd.DataFrame:
+    """Imputa los tokens corruptos con la moda del fold-train (decisión fija).
+
+    Son residuos de parseo (puertos y `state`): ~320 filas, 100 % `Benign`, y la moda
+    preserva un valor real en vez de inventar un puerto 0.
+    """
     out = df.copy()
     for col in IMPUTAR:
-        if col not in out.columns:
-            continue
-        if col == "state":
-            relleno = params["modas"][col]
-        else:
-            relleno = params["modas"][col] if celda["imput"] == "moda" else 0
-        out[col] = out[col].fillna(relleno)
+        if col in out.columns:
+            out[col] = out[col].fillna(params["modas"][col])
     return out
 
 
@@ -240,13 +237,13 @@ def fit_transform(train: pd.DataFrame, celda: dict) -> tuple[dict, pd.DataFrame]
         feat = [c for c in train.columns if c not in CONTROL]
         fit = train.drop_duplicates(subset=feat)
 
-    params: dict = {"modas": {}, "p99": {}, "log1p_cols": [], "proto_top": []}
+    params: dict = {"modas": {}, "log1p_cols": [], "proto_top": []}
     for col in IMPUTAR:
         modo = fit[col].dropna().mode()
         v = modo.iat[0] if len(modo) else np.nan
         params["modas"][col] = v.item() if hasattr(v, "item") else v
 
-    w = _rellenar_nulos(fit, celda, params)
+    w = _rellenar_nulos(fit, params)
     w = _derivar_puertos(w, celda)
     w = _filtrar_ct(w, celda)
 
@@ -255,18 +252,12 @@ def fit_transform(train: pd.DataFrame, celda: dict) -> tuple[dict, pd.DataFrame]
         params["proto_top"] = frec[frec >= UMBRAL_PROTO_COLA].index.tolist()
         w["proto"] = w["proto"].where(w["proto"].isin(params["proto_top"]), "otros")
 
-    num = _columnas_numericas(w)
-    if celda["winsor"]:
-        for c in num:
-            params["p99"][c] = float(pd.to_numeric(w[c], errors="coerce").quantile(0.99))
-        for c in num:
-            w[c] = w[c].clip(upper=params["p99"][c])
-
-    if celda["log1p"] is not None:
-        for c in num:
-            s = pd.to_numeric(w[c], errors="coerce").astype("float64")
-            if abs(float(s.skew())) > celda["log1p"]:
-                params["log1p_cols"].append(c)
+    # `log1p` transversal: se seleccionan las columnas |asimetría| > 1 sobre el
+    # fold-train y se aplican a todas las celdas (winsor descartado por solapar).
+    for c in _columnas_numericas(w):
+        s = pd.to_numeric(w[c], errors="coerce").astype("float64")
+        if abs(float(s.skew())) > UMBRAL_LOG1P:
+            params["log1p_cols"].append(c)
 
     w = _aplicar_log1p(w, params)
     return params, w.drop(columns=["Ltime"])
@@ -274,15 +265,11 @@ def fit_transform(train: pd.DataFrame, celda: dict) -> tuple[dict, pd.DataFrame]
 
 def transform(df: pd.DataFrame, celda: dict, params: dict) -> pd.DataFrame:
     """Aplica una receta ya fiteada (para el fold-val o el test)."""
-    out = _rellenar_nulos(df, celda, params)
+    out = _rellenar_nulos(df, params)
     out = _derivar_puertos(out, celda)
     out = _filtrar_ct(out, celda)
     if celda["proto"] == "colapsar":
         out["proto"] = out["proto"].where(out["proto"].isin(params["proto_top"]), "otros")
-    if celda["winsor"]:
-        for c in _columnas_numericas(out):
-            if c in params["p99"]:
-                out[c] = out[c].clip(upper=params["p99"][c])
     out = _aplicar_log1p(out, params)
     return out.drop(columns=["Ltime"])
 
@@ -378,10 +365,11 @@ def main() -> None:
     # ---------------- Split 85/15 ----------------
     ltime = df["Ltime"].to_numpy()
     corte = corte_alineado(ltime, FRACCION_TRAIN)
+    c_indice = min(corte, n - 1)
     idx_train = np.arange(0, corte)
     idx_test = np.arange(corte, n)
     print(f"[2] corte 85/15 en fila {corte:,} "
-          f"(Ltime {pd.to_datetime(int(ltime[corte]), unit='s')}); "
+          f"(Ltime {pd.to_datetime(int(ltime[c_indice]), unit='s')}); "
           f"train {len(idx_train):,} · test {len(idx_test):,}")
 
     clases = sorted(df["attack_cat"].unique().tolist())
@@ -418,7 +406,11 @@ def main() -> None:
     print(f"  test.parquet     {len(base_test):>9,} filas × {base_test.shape[1]} cols")
 
     # ---------------- Materialización de la rejilla ----------------
-    print("\n[5] materializando la rejilla de preprocesamiento (14 celdas × 5 rondas)")
+    print(f"\n[5] materializando la rejilla de preprocesamiento ({len(CELDAS)} celdas × {K} rondas)")
+    for p in GRID_DIR.glob("G*"):
+        if p.is_dir() and p.name not in CELDAS:
+            shutil.rmtree(p)
+            print(f"  celda obsoleta eliminada: {p.name}")
     train_base = base.loc[fold >= 0].reset_index(drop=True)
     manifiesto = []
     for cid, celda in CELDAS.items():
@@ -436,13 +428,21 @@ def main() -> None:
             with open(ronda_dir / "parametros.json", "w") as fh:
                 json.dump(params, fh, ensure_ascii=False, indent=2, default=str)
         manifiesto.append({
-            "celda": cid, "log1p": celda["log1p"], "winsor_p99": celda["winsor"],
-            "ct": celda["ct"], "deduplicar": celda["dedup"],
+            "celda": cid, "ct": celda["ct"], "deduplicar": celda["dedup"],
             "puertos": celda["puertos"], "proto": celda["proto"],
-            "imputacion": celda["imput"],
         })
         print(f"  {cid}: 5 rondas materializadas")
     pd.DataFrame(manifiesto).to_csv(GRID_DIR / "manifiesto.csv", index=False)
+
+    # Conteo de tokens corruptos (solo para reporte: se imputan con la moda).
+    corrup = {
+        col: {
+            "totales": int(df[col].isna().sum()),
+            "train": int(df.iloc[idx_train][col].isna().sum()),
+            "test": int(df.iloc[idx_test][col].isna().sum()),
+        }
+        for col in IMPUTAR
+    }
 
     # ---------------- Metadatos ----------------
     meta = {
@@ -451,7 +451,7 @@ def main() -> None:
         "filas_marcadas_como_duplicadas": int(es_dup.sum()),
         "fracciones": {"train": FRACCION_TRAIN, "test": round(1 - FRACCION_TRAIN, 2)},
         "corte_train_test": int(corte),
-        "Ltime_corte_train_test": str(pd.to_datetime(int(ltime[corte]), unit="s")),
+        "Ltime_corte_train_test": str(pd.to_datetime(int(ltime[c_indice]), unit="s")),
         "K": K,
         "semilla": SEMILLA,
         "tamanos_folds": tamanos_fold,
@@ -460,9 +460,11 @@ def main() -> None:
         "columnas_eliminadas": ELIMINAR_ESTATICO,
         "blancos_estructurales_imputados_a_cero": BLANCOS_ESTRUCTURALES,
         "tokens_corruptos_imputados": IMPUTAR,
+        "filas_tokens_corruptos": corrup,
         "clases": {c: v for c, v in mapa.items()},
         "clases_por_indice": {str(v): c for c, v in mapa.items()},
         "rejilla": manifiesto,
+        "umbral_log1p": UMBRAL_LOG1P,
         "umbral_proto_cola": UMBRAL_PROTO_COLA,
     }
     with open(BASE_DIR / "metadatos.json", "w") as fh:
@@ -482,6 +484,22 @@ def main() -> None:
     n_cls_test = int(pd.Series(label[idx_test]).nunique())
     print(f"  [V1] clases: train={n_cls_train}, test={n_cls_test} (se requieren 10)")
 
+    print("  [V1b] recuento de clases por fold (train):")
+    fold_clases = pd.DataFrame(
+        {f"fold_{j + 1}": [int(((fold == j) & (label == i)).sum())
+                           for i in range(len(clases))]
+         for j in range(K)},
+        index=clases,
+    )
+    print(fold_clases.to_string())
+    ausentes = {
+        f"fold_{j + 1}": [clases[i] for i in range(len(clases))
+                          if int(((fold == j) & (label == i)).sum()) == 0]
+        for j in range(K)
+    }
+    sin_alguna = {k: v for k, v in ausentes.items() if v}
+    print(f"  folds con clases ausentes: {sin_alguna or 'ninguno (10/10 en cada fold)'}")
+
     # [V2] Grupos de filas idénticas que cruzan train/test.
     g_train = set(grupo[idx_train].tolist())
     g_test = set(grupo[idx_test].tolist())
@@ -495,10 +513,14 @@ def main() -> None:
     # registros de test comparten contexto de captura con el final de train; eso no es
     # fuga (el contexto de ct_* es retrospectivo por definición), por lo que no se
     # verifica un porcentaje de solape sino la alineación del corte.
-    corte_ok = bool(ltime[corte] != ltime[corte - 1])
+    corte_ok = bool(ltime[c_indice] != ltime[corte - 1])
     print(f"  [V3] corte alineado a límite de Ltime: {corte_ok}")
     if not corte_ok:
         raise AssertionError("El corte 85/15 parte un grupo de Ltime idéntico")
+
+    print("  [V4] tokens corruptos por split (imputados con la moda):")
+    for col, c in corrup.items():
+        print(f"  {col:8s} {c['totales']:>4} nulos · train={c['train']:>4} · test={c['test']:>4}")
 
     print("\nPreprocesamiento completado.")
     print(f"  base/  → 5 folds + test  (sin transformar)")

@@ -11,7 +11,7 @@ Desarrollar un clasificador de tráfico de red que distinga el tráfico normal (
 - Fabricio Alonso Lanche Pacsi
 - Jhogan Haldo Pachacutec Aguilar
 - Anyeli Azumi Tamara Ureta
-- Paulo Ismael Miranda Barrientos
+- Paulo Isael Miranda Barrientos
 - Christofer Renato Perez Torres
 
 ## Estructura del repositorio
@@ -107,7 +107,7 @@ necesita residir íntegro en memoria.
 | `data/preprocessed/base/test.parquet` | 15 % de prueba, sellado hasta la fase 3 |
 | `data/preprocessed/base/metadatos.json` | Cortes temporales, decisiones de limpieza y codificación del objetivo |
 | `data/preprocessed/grid/<celda>/r1..r5/` | Variante de cada celda de la rejilla, con `train` y `val` por ronda |
-| `data/preprocessed/grid/manifiesto.csv` | Receta que define cada celda (`G00`…`G14`) |
+| `data/preprocessed/grid/manifiesto.csv` | Receta que define cada celda (9 celdas: `G00`, `G05`–`G10`, `G13`, `G14`) |
 
 El formato parquet es obligatorio: preserva los tipos `Int8`, `Int16`, `Float32` y `boolean`
 de Pandas, que un CSV destruiría al releerlos. Los detalles del esquema de entrenamiento
