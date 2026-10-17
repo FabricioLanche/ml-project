@@ -42,10 +42,11 @@ Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en
 
 **Unidad granular de trabajo.** Fitea el pipeline en `train_df`, predice `val_df`,
 persiste tres artefactos en `destino` (crea el directorio si no existe) y devuelve las
-métricas en un dict `{accuracy, f1, weightedPrecision, weightedRecall}`.
+métricas en un dict `{accuracy, weightedPrecision, weightedF1, macroF1}` (ver *Métricas de
+una ronda*).
 
 | Argumento | Qué recibe |
-|---|---|---|
+|---|---|
 | `train_df`, `val_df` | DataFrames **ya pasados por `common.cargar_parquet`** (sanea nombres de columnas y castea booleanos). Un DataFrame crudo de `spark.read.parquet` puede fallar en `VectorAssembler` |
 | `arma` | `"logreg"`, `"rf"` o `"svm"` (constante `common.ALGOS`) |
 | `params` | dict de hiperparámetros que se superponen a los default (`{}` = default) |
@@ -104,6 +105,25 @@ directorio no contiene celdas `G*`.
 `params` se fusiona sobre los default (`{**default, **params}`); un parámetro inválido
 produce el `ValueError` nativo del estimador de Spark.
 
+## Métricas de una ronda
+
+`common.METRICAS = ("accuracy", "weightedPrecision", "weightedF1", "macroF1")`. Se calculan
+en **una sola pasada**: `common.evaluar` hace un `groupBy(label, prediction).count()` y el
+cálculo vive en `common.metricas_desde_matriz`, una función pura (sin Spark) que también se
+puede verificar con una matriz de confusión escrita a mano.
+
+| Métrica | Qué mide | Nota |
+|---|---|---|
+| `accuracy` | aciertos / total | Equivale al `weightedRecall` multiclase, por eso no se reporta aparte |
+| `weightedPrecision` | precisión por clase ponderada por el soporte real (`n_c`/N) | Refleja sobre todo las clases frecuentes |
+| `weightedF1` | F1 por clase ponderado por soporte | Dominado por las clases mayoritarias |
+| `macroF1` | F1 por clase promediado con el mismo peso para todas | La que expone el mal desempeño en clases minoritarias |
+
+`macroF1` promedia solo las clases con soporte > 0 en el fold: una clase ausente no debe
+aportar un F1 de 0 al promedio. Con el desbalanceo de UNSW-NB15 es la métrica decisiva —
+`accuracy` y `weightedF1` pueden verse altos mientras las clases de ataque raras (Worms,
+Analysis) tienen recall 0.
+
 ## Pipeline por fold
 
 Para cada fold, `construir_pipeline` arma, en orden:
@@ -122,7 +142,7 @@ de `preparar`; no hay lista fija de columnas — el esquema del parquet manda.
 
 ```
 <out>/
-├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,arma,accuracy,f1,weightedPrecision,weightedRecall
+├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,arma,accuracy,weightedPrecision,weightedF1,macroF1
 └── <celda>/<arma>/r<k>/
     ├── modelo/                         # PipelineModel nativo de Spark (recargable)
     ├── predicciones.parquet            # label, attack_cat, es_duplicado?, prediction, probability|raw_prediction
@@ -168,46 +188,3 @@ metricas = common.evaluar(pred)
 python notebooks/cli.py --input <ruta>/train.parquet --algo logreg \
     --limite 20000 --driver-memory 4g --out results/humo
 ```
-
-### Composición programática: comparar dos armas sobre la rejilla
-
-```python
-import csv
-from pathlib import Path
-
-import common
-from train import construir_spark, correr_grid
-
-spark = construir_spark(driver_memory="4g", app_name="comparacion-cv")
-filas = []
-try:
-    for arma in ("logreg", "rf"):
-        filas += correr_grid(spark, "data/preprocessed/grid", arma=arma,
-                             params={}, out="results/fase2")
-finally:
-    spark.stop()
-
-# Agregación a cargo de la capa de CV (mismo esquema que usa cli.py)
-ruta = Path("results/fase2/metricas.csv")
-ruta.parent.mkdir(parents=True, exist_ok=True)
-with ruta.open("w", newline="", encoding="utf-8") as fh:
-    escritor = csv.DictWriter(fh, fieldnames=["celda", "ronda", "arma", *common.METRICAS])
-    escritor.writeheader()
-    escritor.writerows(filas)
-```
-
-## Verificación ya realizada
-
-El motor fue validado de punta a punta en la EC2 del laboratorio (2026-10-17):
-Ubuntu 22.04, Python 3.12, PySpark 4.2.0, OpenJDK 17, instancia m7i-flex.large.
-
-- Corrida de humo: `logreg` sobre 20 000 filas → `accuracy=0.9696`, `f1=0.9681`,
-  `weightedPrecision=0.9670`, `weightedRecall=0.9696`.
-- Artefactos verificados: `modelo/` con 13 stages (índice + one-hot por categórica,
-  assembler, scaler, clasificador), `predicciones.parquet`, `metricas.json`,
-  `metricas.csv`.
-
-Esos valores son **indicativos solamente**: muestra reducida con split aleatorio, no el
-protocolo del proyecto (split cronológico + K-Fold sobre el 85 %). La evaluación
-definitiva es la de la capa de CV y, en la fase final, el 15 % sellado
-(`data/preprocessed/base/test.parquet`).
