@@ -11,7 +11,6 @@ Notas de alcance
   declara la nota de alcance de `pre-process.py`.
 * Los nombres de columna se sanean al cargar (espacios → guion bajo) porque el
   diccionario de UNSW-NB15 escribe `ct_src_ ltm` con un espacio suelto.
-
 """
 
 import json

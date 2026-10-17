@@ -1,6 +1,6 @@
 # Modelado con MLlib (P2): interfaz del motor para la capa de validación cruzada
 
-Este documento describe la interfaz de `train.py` y `common.py` para quien construya la
+Este documento describe la interfaz de `train.py`, `common.py` y `cli.py` para quien construya la
 capa de validación cruzada y comparación de modelos por encima del motor. Todo lo que
 sigue corresponde al código tal como está en el repo; si se cambia una firma, este
 documento se actualiza en el mismo commit.
@@ -10,15 +10,17 @@ documento se actualiza en el mismo commit.
 - `common.py`: pipeline MLlib compartido (features, clasificadores, evaluación, E/S).
   No importa `train.py` ni depende de `argparse`.
 - `train.py`: motor de corridas (`construir_spark`, `correr_ronda`, `correr_suelto`,
-  `correr_grid`) + una CLI delgada que solo adapta el motor a argumentos de terminal.
+  `correr_grid`). Importable como biblioteca; no parsea argumentos de terminal.
+- `cli.py`: adaptador de terminal. Parsea argumentos, llama al motor y vuelca el
+  resumen `<out>/metricas.csv`. No entrena ni evalúa nada por su cuenta.
 
 **Lo que el motor NO hace** (y por eso existe la capa de CV):
 
 - No agrega ni promedia métricas entre rondas: devuelve una fila por corrida y quien
   llama decide cómo promediar/comparar.
-- No escribe el `metricas.csv` cuando se usa como biblioteca: eso solo lo hace la CLI
-  (`main`). Desde código, el llamador arma su propio CSV con el esquema de la sección
-  *Esquema de salidas*.
+- No escribe el `metricas.csv` cuando se usa como biblioteca: eso solo lo hace el
+  adaptador (`cli.py`). Desde código, el llamador arma su propio CSV con el esquema de
+  la sección *Esquema de salidas*.
 - No crea ni destruye sesiones de Spark: ver *Reglas de composición*.
 
 ## Contrato de la interfaz
@@ -120,7 +122,7 @@ de `preparar`; no hay lista fija de columnas — el esquema del parquet manda.
 
 ```
 <out>/
-├── metricas.csv                        # solo la CLI; header: celda,ronda,arma,accuracy,f1,weightedPrecision,weightedRecall
+├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,arma,accuracy,f1,weightedPrecision,weightedRecall
 └── <celda>/<arma>/r<k>/
     ├── modelo/                         # PipelineModel nativo de Spark (recargable)
     ├── predicciones.parquet            # label, attack_cat, es_duplicado?, prediction, probability|raw_prediction
@@ -155,13 +157,15 @@ metricas = common.evaluar(pred)
   `--driver-memory 4g` — el default de 1 GiB del driver se queda corto.
 - El repo `data/preprocessed/` no está versionado: correr `pre-process.py` (o
   clonar/copiar la rejilla) antes de una corrida completa.
+- En Windows, PySpark local requiere `winutils.exe` + `HADOOP_HOME`; en la EC2
+  (Ubuntu) no aplica.
 
 ## Ejemplos mínimos
 
 ### Prueba de humo (CLI)
 
 ```bash
-python notebooks/train.py --input <ruta>/train.parquet --algo logreg \
+python notebooks/cli.py --input <ruta>/train.parquet --algo logreg \
     --limite 20000 --driver-memory 4g --out results/humo
 ```
 
@@ -183,7 +187,7 @@ try:
 finally:
     spark.stop()
 
-# Agregación a cargo de la capa de CV (mismo esquema que la CLI)
+# Agregación a cargo de la capa de CV (mismo esquema que usa cli.py)
 ruta = Path("results/fase2/metricas.csv")
 ruta.parent.mkdir(parents=True, exist_ok=True)
 with ruta.open("w", newline="", encoding="utf-8") as fh:
