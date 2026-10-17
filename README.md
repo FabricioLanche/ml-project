@@ -56,7 +56,7 @@ necesita residir íntegro en memoria.
 
 ## Requisitos
 
-- **Python 3.11 o superior** (recomendado: Python 3.12). Las versiones fijadas en `requirements.txt` (`pandas` 3.0.x, `numpy` 2.5.x) solo están disponibles para Python ≥ 3.11. Verificar: `python3 --version` en Linux o `py --version` en Windows.
+- **Python 3.12 o superior**. Las versiones fijadas en `requirements.txt` (`pandas` 3.0.x, `numpy` 2.5.x) requieren Python ≥ 3.12: `numpy` 2.5.x no publica builds para 3.11. Verificar: `python3 --version` en Linux o `py --version` en Windows.
 - **Java 17 o superior** para PySpark. Verificar con `java -version`.
 
 ## Reproducción
