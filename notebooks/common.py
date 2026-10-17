@@ -1,17 +1,4 @@
-"""Pipeline MLlib compartido y utilidades de E/S
-Notas de alcance
-----------------
-* `label` ya es un índice entero (0..9) que produce `pre-process.py` y que viene
-  persistido en cada parquet de la rejilla; el mapeo índice → nombre de clase vive
-  en `data/preprocessed/base/metadatos.json`. Por eso aquí NO se crea un
-  `StringIndexer` de objetivo.
-* `attack_cat` y `es_duplicado` son columnas de control: nunca entran como features.
-* El one-hot de las categóricas y el `StandardScaler` son transversales (idénticos
-  en todas las celdas) y por eso se aplican aquí, dentro del pipeline, tal como
-  declara la nota de alcance de `pre-process.py`.
-* Los nombres de columna se sanean al cargar (espacios → guion bajo) porque el
-  diccionario de UNSW-NB15 escribe `ct_src_ ltm` con un espacio suelto.
-"""
+"""Pipeline MLlib compartido y utilidades de E/S"""
 
 import json
 from pathlib import Path
@@ -23,7 +10,6 @@ from pyspark.ml.classification import (
     OneVsRest,
     RandomForestClassifier,
 )
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.feature import (
     OneHotEncoder,
     StandardScaler,
@@ -52,7 +38,11 @@ PARAMS_POR_DEFECTO: dict[str, dict] = {
     "svm": {"maxIter": 100, "regParam": 0.0, "tol": 1e-6},
 }
 
-METRICAS = ("accuracy", "f1", "weightedPrecision", "weightedRecall")
+# Métricas que se reportan por ronda. `accuracy` ya cubre el recall ponderado (con
+# una sola etiqueta verdadera por fila, `weightedRecall == accuracy`), así que no se
+# repite. `weightedF1` y `macroF1` conviven porque una pondera por soporte de clase y
+# la otra no: solo la segunda expone el mal desempeño en clases minoritarias.
+METRICAS = ("accuracy", "weightedPrecision", "weightedF1", "macroF1")
 
 
 # ===========================================================================
@@ -173,12 +163,67 @@ def construir_pipeline(df: DataFrame, algo: str, params: dict | None = None,
 # Evaluación y salidas
 # ===========================================================================
 def evaluar(pred: DataFrame) -> dict[str, float]:
-    """Métricas multiclase ponderadas sobre `label` vs `prediction`."""
+    """Métricas de una ronda a partir de la matriz de confusión (una sola pasada).
+
+    Un único `groupBy(label, prediction)` alimenta todas las métricas. Con el
+    `MulticlassClassificationEvaluator` haría falta una pasada completa por métrica, y
+    una por etiqueta para el `macroF1` (MLlib no tiene promediado macro).
+    """
+    conteos = pred.groupBy("label", "prediction").count().collect()
+    matriz = {
+        (int(fila["label"]), int(fila["prediction"])): fila["count"]
+        for fila in conteos
+    }
+    return metricas_desde_matriz(matriz)
+
+
+def metricas_desde_matriz(matriz: dict[tuple[int, int], int]) -> dict[str, float]:
+    """Calcula `METRICAS` desde una matriz de confusión dispersa.
+
+    `matriz` mapea `(etiqueta_real, etiqueta_predicha) -> conteo`; las celdas ausentes
+    valen 0. Es una función pura (sin Spark) para poder verificarla a mano.
+
+    `macroF1` promedia el F1 de cada clase con el mismo peso: es la métrica que deja ver
+    un mal desempeño en las clases minoritarias, que `accuracy` y `weightedF1` esconden
+    al ponderar por soporte. Solo entran las clases con soporte > 0 en el fold: una
+    clase ausente no debe aportar un F1 de 0 al promedio macro.
+    """
+    total = sum(matriz.values())
+    if not total:
+        return {nombre: 0.0 for nombre in METRICAS}
+
+    reales: dict[int, int] = {}           # filas reales por clase (soporte)
+    predichas: dict[int, int] = {}        # filas predichas como esa clase
+    aciertos_por_clase: dict[int, int] = {}
+    for (real, predicha), conteo in matriz.items():
+        reales[real] = reales.get(real, 0) + conteo
+        predichas[predicha] = predichas.get(predicha, 0) + conteo
+        if real == predicha:
+            aciertos_por_clase[real] = aciertos_por_clase.get(real, 0) + conteo
+
+    precision_por_clase: dict[int, float] = {}
+    f1_por_clase: dict[int, float] = {}
+    for clase, soporte in reales.items():
+        aciertos = aciertos_por_clase.get(clase, 0)
+        falsos_positivos = predichas.get(clase, 0) - aciertos
+        denominador = aciertos + falsos_positivos
+        precision = aciertos / denominador if denominador else 0.0
+        recall = aciertos / soporte
+        precision_por_clase[clase] = precision
+        f1_por_clase[clase] = (
+            2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        )
+
+    aciertos = sum(aciertos_por_clase.values())
     return {
-        nombre: MulticlassClassificationEvaluator(
-            labelCol="label", predictionCol="prediction", metricName=nombre
-        ).evaluate(pred)
-        for nombre in METRICAS
+        "accuracy": aciertos / total,
+        "weightedPrecision": sum(
+            precision * reales[clase] for clase, precision in precision_por_clase.items()
+        ) / total,
+        "weightedF1": sum(
+            f1 * reales[clase] for clase, f1 in f1_por_clase.items()
+        ) / total,
+        "macroF1": sum(f1_por_clase.values()) / len(f1_por_clase),
     }
 
 
