@@ -17,13 +17,17 @@ from pyspark.ml.feature import (
     VectorAssembler,
 )
 from pyspark.ml.functions import vector_to_array
-from pyspark.sql import Column, DataFrame
+from pyspark.sql import Column, DataFrame, Window
 from pyspark.sql import functions as F
 
 #: Columnas que nunca son features (mismas que `CONTROL` en `pre-process.py`).
 CONTROL = ("label", "attack_cat", "es_duplicado")
 
 ALGOS = ("logreg", "rf", "svm")
+
+#: Semilla del proyecto (la misma de `pre-process.py`). Fija qué filas entran en el
+#: recorte por clase de `cargar_parquet`.
+SEMILLA = 42
 
 #: Hiperparámetros por defecto. Se dejan explícitos para que una corrida sin
 #: `--params` sea autoexplicativa y reproducible. Los de `rf` son débiles a
@@ -61,11 +65,32 @@ def cargar_parquet(spark, ruta: str | Path, limite: int | None = None) -> DataFr
     """Lee un parquet de la rejilla, lo prepara y opcionalmente limita filas.
 
     `limite` existe para pruebas de humo rápidas sin materializar 1.7M de filas.
+    El recorte es por clase (`_tope_por_clase`), no por orden físico de las filas.
     """
     df = sanear_columnas(spark.read.parquet(str(ruta)))
     if limite:
-        df = df.limit(limite)
+        df = _tope_por_clase(df, limite, SEMILLA)
     return preparar(df)
+
+
+def _tope_por_clase(df: DataFrame, limite: int, semilla: int) -> DataFrame:
+    """Recorta a ~`limite` filas conservando todas las clases del archivo.
+
+    Toma hasta `limite // n_clases` filas de cada clase (mínimo 1) en lugar de las
+    primeras `limite` filas. El orden físico del parquet no es aleatorio: en las
+    primeras 20k filas de `train.parquet` la clase 0 (Analysis) quedó sin ejemplos,
+    `OneVsRest` no pudo construir su modelo binario y `LinearSVC` abortó con
+    "1 classes detected". Al repartir el tope por clase, toda clase presente en el
+    archivo aporta filas y el humo alcanza para los 10 modelos de `svm`.
+    """
+    n_clases = df.select("label").distinct().count()
+    tope = max(1, limite // max(n_clases, 1))
+    orden = Window.partitionBy("label").orderBy(F.rand(semilla))
+    return (
+        df.withColumn("_fila_clase", F.row_number().over(orden))
+        .where(F.col("_fila_clase") <= tope)
+        .drop("_fila_clase")
+    )
 
 
 # ===========================================================================
