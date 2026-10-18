@@ -59,7 +59,8 @@ def parse_args(argv=None):
     parser.add_argument("--algo", choices=common.ALGOS, required=True)
     parser.add_argument("--params", help="JSON inline o ruta a un archivo JSON de hiperparámetros")
     parser.add_argument("--out", default="results", help="directorio de salida (default: results)")
-    parser.add_argument("--limite", type=int, help="tope de filas por archivo (humo rápido)")
+    parser.add_argument("--limite", type=int,
+                        help="tope de filas por archivo, repartido entre las clases (humo rápido)")
     parser.add_argument("--no-escala", action="store_true", help="omite el StandardScaler")
     parser.add_argument("--semilla", type=int, default=42)
     parser.add_argument("--master", default="local[*]", help="default: local[*]")

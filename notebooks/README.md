@@ -56,9 +56,10 @@ una ronda*).
 ### `correr_suelto(spark, entrada, *, val=None, fraccion_val=0.2, semilla=42, arma, params, escala=True, out="results", limite=None) -> list[dict]`
 
 Entrena sobre un parquet suelto. Si `val` falta, parte `entrada` con
-`randomSplit([1 - fraccion_val, fraccion_val], seed=semilla)`. `limite` toma solo las
-primeras N filas por archivo — **solo para pruebas de humo**, nunca para resultados
-finales. Escribe en `<out>/suelto/<arma>/` y devuelve una fila
+`randomSplit([1 - fraccion_val, fraccion_val], seed=semilla)`. `limite` reparte el
+tope entre las clases del archivo (hasta `limite // n_clases` filas por clase), de
+modo que ninguna clase quede sin ejemplos — **solo para pruebas de humo**, nunca para
+resultados finales. Escribe en `<out>/suelto/<arma>/` y devuelve una fila
 `{"celda": "suelto", "ronda": "-1", "arma": ..., **metricas}`.
 
 ### `correr_grid(spark, grid, *, arma, params, escala=True, out="results", limite=None) -> list[dict]`
