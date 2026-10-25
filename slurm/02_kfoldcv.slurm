@@ -1,18 +1,20 @@
 #!/bin/bash
 # Ejecuta fase 1, fase 2 y fase 3 final del orquestador.
 # Uso:
-#   sbatch --partition=big-mem slurm/02_kfoldcv.slurm
+#   sbatch --partition=standard slurm/02_kfoldcv.slurm
 # Opcional:
 #   ITERACIONES=1 PROJECT_DIR=/ruta/ml-project CONDA_ENV=ml-unsw \
 #     sbatch slurm/02_kfoldcv.slurm
 
 #SBATCH --job-name=unsw-kfold
-#SBATCH --partition=big-mem
+#SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
-#SBATCH --time=7-00:00:00
+# La cuenta de pregrado permite hasta 32 cores, 98 GB y 8 horas por job.
+# Se solicita margen bajo el límite de memoria.
+#SBATCH --mem=96G
+#SBATCH --time=08:00:00
 #SBATCH --output=slurm-%j-kfold.out
 #SBATCH --error=slurm-%j-kfold.err
 

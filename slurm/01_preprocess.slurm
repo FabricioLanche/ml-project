@@ -1,17 +1,19 @@
 #!/bin/bash
 # Materializa base/ y grid/ a partir de data/raw/.
 # Uso:
-#   sbatch --partition=big-mem slurm/01_preprocess.slurm
+#   sbatch --partition=standard slurm/01_preprocess.slurm
 # Opcional:
 #   PROJECT_DIR=/ruta/ml-project CONDA_ENV=ml-unsw sbatch slurm/01_preprocess.slurm
 
 #SBATCH --job-name=unsw-preprocess
-#SBATCH --partition=big-mem
+#SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
-#SBATCH --time=24:00:00
+# La cuenta de pregrado permite hasta 32 cores, 98 GB y 8 horas por job.
+# Se solicita margen bajo el límite de memoria.
+#SBATCH --mem=96G
+#SBATCH --time=08:00:00
 #SBATCH --output=slurm-%j-preprocess.out
 #SBATCH --error=slurm-%j-preprocess.err
 

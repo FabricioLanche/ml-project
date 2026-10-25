@@ -169,9 +169,12 @@ cat slurm-<jobid>-kfold.out
 ```
 
 Los valores de partición, memoria, tiempo y CPU están declarados en los encabezados
-`#SBATCH` y pueden sobrescribirse al enviar el job según la cuenta y las políticas vigentes
-de Khipu. Los scripts fallan explícitamente si falta el entorno, el dataset o la salida del
-preprocesamiento anterior.
+`#SBATCH`. Para la cuenta de pregrado de Khipu se usa `standard`, con 16 cores, 96 GB
+de RAM y 8 horas por job, dentro de los límites de 32 cores, 98 GB y 8 horas. Si el
+entrenamiento completo necesita más tiempo, debe dividirse en ejecuciones o solicitar una
+cuenta/QoS autorizada con un límite mayor; no conviene pedir recursos superiores a los
+permitidos, porque el job quedará pendiente. Los scripts fallan explícitamente si falta el
+entorno, el dataset o la salida del preprocesamiento anterior.
 
 ## Dataset
 
