@@ -10,9 +10,12 @@ documento se actualiza en el mismo commit.
 - `common.py`: pipeline MLlib compartido (features, clasificadores, evaluación, E/S).
   No importa `train.py` ni depende de `argparse`.
 - `train.py`: motor de corridas (`construir_spark`, `correr_ronda`, `correr_suelto`,
-  `correr_grid`). Importable como biblioteca; no parsea argumentos de terminal.
+  `correr_grid`, `correr_final`). Importable como biblioteca; no parsea argumentos de terminal.
 - `cli.py`: adaptador de terminal. Parsea argumentos, llama al motor y vuelca el
   resumen `<out>/metricas.csv`. No entrena ni evalúa nada por su cuenta.
+- `k-foldCV.py`: orquestador de punta a punta. Ejecuta la comparación de celdas,
+  la búsqueda de hiperparámetros de cada modelo y, al terminar las iteraciones,
+  el reentrenamiento final contra `base/test.parquet`.
 
 **Lo que el motor NO hace** (y por eso existe la capa de CV):
 
@@ -22,6 +25,42 @@ documento se actualiza en el mismo commit.
   adaptador (`cli.py`). Desde código, el llamador arma su propio CSV con el esquema de
   la sección *Esquema de salidas*.
 - No crea ni destruye sesiones de Spark: ver *Reglas de composición*.
+
+## Orquestador de k-fold
+
+La ejecución completa usa las cinco rondas de cada celda y mantiene un flujo
+independiente para `logreg`, `rf` y `svm`:
+
+```bash
+python notebooks/k-foldCV.py --iteraciones 1 --driver-memory 4g
+```
+
+La fase 1 compara las diez celdas con los parámetros base. La fase 2 busca las
+combinaciones de `--params` sobre la celda ganadora de cada modelo. Si no se
+proporciona JSON, se usa una rejilla pequeña incorporada al script. El criterio de
+selección es, en orden, mayor media de `promedio_F1`, mayor media de
+`promedio_recall`, mayor media de `promedio_precision` y menor `DS_F1`.
+
+`--iteraciones` repite ambas fases. La primera fase de la primera iteración usa
+los parámetros base; después de cada fase 2, sus hiperparámetros ganadores pasan
+a la fase 1 de la siguiente iteración. En cada iteración, la fase 2 usa únicamente
+la rejilla configurada para esa ejecución sobre la celda ganadora de su propia
+fase 1. Solo los ganadores de la última iteración se reentrenan con todo el 85 %
+de entrenamiento. `test.parquet` permanece aislado hasta esa fase final. Un JSON
+personalizado tiene esta forma:
+
+```json
+{
+  "logreg": [{"maxIter": 100, "regParam": 0.1, "elasticNetParam": 0.0}],
+  "rf": [{"numTrees": 50, "maxDepth": 10}],
+  "svm": [{"maxIter": 200, "regParam": 0.1, "tol": 1e-6}]
+}
+```
+
+Las salidas se organizan en `results/iteracion_N/fase_1/`, `fase_2/` y
+`results/fase_3/<modelo>/`. En fase 3 se ajusta una única receta de
+preprocesamiento con todo el 85 % antes de transformar train y test, y se guardan
+las métricas por clase y las matrices de confusión.
 
 ## Contrato de la interfaz
 
@@ -42,7 +81,7 @@ Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en
 
 **Unidad granular de trabajo.** Fitea el pipeline en `train_df`, predice `val_df`,
 persiste tres artefactos en `destino` (crea el directorio si no existe) y devuelve las
-métricas en un dict `{accuracy, weightedPrecision, weightedF1, macroF1}` (ver *Métricas de
+métricas en un dict `{accuracy, promedio_precision, promedio_recall, promedio_F1}` (ver *Métricas de
 una ronda*).
 
 | Argumento | Qué recibe |
@@ -108,22 +147,22 @@ produce el `ValueError` nativo del estimador de Spark.
 
 ## Métricas de una ronda
 
-`common.METRICAS = ("accuracy", "weightedPrecision", "weightedF1", "macroF1")`. Se calculan
+`common.METRICAS = ("accuracy", "promedio_precision", "promedio_recall", "promedio_F1")`. Se calculan
 en **una sola pasada**: `common.evaluar` hace un `groupBy(label, prediction).count()` y el
-cálculo vive en `common.metricas_desde_matriz`, una función pura (sin Spark) que también se
+cálculo vive en `common.detalle_desde_matriz`, una función pura (sin Spark) que también se
 puede verificar con una matriz de confusión escrita a mano.
 
 | Métrica | Qué mide | Nota |
 |---|---|---|
 | `accuracy` | aciertos / total | Equivale al `weightedRecall` multiclase, por eso no se reporta aparte |
-| `weightedPrecision` | precisión por clase ponderada por el soporte real (`n_c`/N) | Refleja sobre todo las clases frecuentes |
-| `weightedF1` | F1 por clase ponderado por soporte | Dominado por las clases mayoritarias |
-| `macroF1` | F1 por clase promediado con el mismo peso para todas | La que expone el mal desempeño en clases minoritarias |
+| `promedio_precision` | precisión por clase promediada sin ponderar | Cada clase tiene el mismo peso |
+| `promedio_recall` | recall por clase promediado sin ponderar | Expone ataques que no se detectan |
+| `promedio_F1` | F1 por clase promediado sin ponderar | Métrica principal ante el desbalance |
 
-`macroF1` promedia solo las clases con soporte > 0 en el fold: una clase ausente no debe
-aportar un F1 de 0 al promedio. Con el desbalanceo de UNSW-NB15 es la métrica decisiva —
-`accuracy` y `weightedF1` pueden verse altos mientras las clases de ataque raras (Worms,
-Analysis) tienen recall 0.
+La evaluación detallada puede guardar `metricas_por_clase.csv`, con `precision`, `recall`,
+`F1`, `TP`, `TN`, `FP`, `FN` y `support`, además de las matrices de confusión absoluta y
+normalizada por fila. El mapa completo de clases puede pasarse a `evaluar` para incluir
+clases ausentes con métricas cero.
 
 ## Pipeline por fold
 
@@ -143,11 +182,14 @@ de `preparar`; no hay lista fija de columnas — el esquema del parquet manda.
 
 ```
 <out>/
-├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,arma,accuracy,weightedPrecision,weightedF1,macroF1
+├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,algo,accuracy,promedio_precision,promedio_recall,promedio_F1
 └── <celda>/<arma>/r<k>/
     ├── modelo/                         # PipelineModel nativo de Spark (recargable)
     ├── predicciones.parquet            # label, attack_cat, es_duplicado?, prediction, probability|raw_prediction
-    └── metricas.json                   # las 4 métricas de la ronda
+    ├── metricas.json                   # resumen de la ronda
+    ├── metricas_por_clase.csv          # evaluación detallada cuando se solicita
+    ├── matriz_confusion.csv
+    └── matriz_confusion_normalizada.csv
 ```
 
 En `correr_suelto`, `<celda>` es literalmente `suelto` y `r<k>` es `-1`.

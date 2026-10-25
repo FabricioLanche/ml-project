@@ -2,7 +2,10 @@
 .example-datasets/
 **/raw/UNSW*
 results/
+dataset/
+$tmp/
 .venv/
+.smoke_kfold
 data/preprocessed
 main.tex
 __pycache__/

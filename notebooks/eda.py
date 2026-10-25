@@ -171,19 +171,19 @@ def _eta2_num_cat(series, labels):
 
 
 def heatmap(mat, filas, col_etiquetas, titulo, nombre, cmap="RdBu_r", vmin=-1, vmax=1):
-    fig, ax = plt.subplots(figsize=(max(7, 0.42 * len(filas)), max(5, 0.42 * len(filas))))
+    fig, ax = plt.subplots(figsize=(max(8, 0.5 * len(filas)), max(6, 0.5 * len(filas))))
     im = ax.imshow(mat, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
     ax.set_xticks(range(len(col_etiquetas)))
-    ax.set_xticklabels(col_etiquetas, rotation=45, ha="right", fontsize=8)
+    ax.set_xticklabels(col_etiquetas, rotation=45, ha="right", fontsize=9)
     ax.set_yticks(range(len(filas)))
-    ax.set_yticklabels(filas, fontsize=8)
+    ax.set_yticklabels(filas, fontsize=9)
     for i in range(mat.shape[0]):
         for j in range(mat.shape[1]):
             v = mat[i, j]
-            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=6,
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=7,
                     color="white" if abs(v) > 0.6 else "black")
     fig.colorbar(im, ax=ax, label="correlación")
-    ax.set_title(titulo)
+    ax.set_title(titulo, fontsize=12)
     fig.tight_layout()
     _guardar_fig(fig, nombre)
 
@@ -302,49 +302,50 @@ def _barras_clases(ax, s, titulo, leyenda=False):
     ax.bar(range(len(s)), s.values,
            color=[AZUL if c == "Benign" else ROJO for c in s.index])
     ax.set_xticks(range(len(s)))
-    ax.set_xticklabels(s.index, rotation=45, ha="right", fontsize=8)
+    ax.set_xticklabels(s.index, rotation=45, ha="right", fontsize=11)
     for x, (n, p) in enumerate(zip(s.values, s.values / N * 100)):
         ax.text(x, n * 1.02, f"{n:,}\n({p:.2f}%)",
-                ha="center", va="bottom", fontsize=7)
-    ax.set_ylabel("nº de registros")
-    ax.set_title(titulo)
+                ha="center", va="bottom", fontsize=9)
+    ax.set_ylabel("nº de registros", fontsize=12)
+    ax.set_title(titulo, fontsize=14)
+    ax.tick_params(axis="y", labelsize=11)
     ax.set_ylim(top=s.values.max() * 1.6)
     if leyenda:
         ax.legend(handles=[Patch(color=AZUL, label="Benign"),
-                           Patch(color=ROJO, label="Ataque")], fontsize=8)
+                           Patch(color=ROJO, label="Ataque")], fontsize=11)
 
 vc_asc = vc.sort_values(ascending=True)
 ataq_asc = vc.drop(index=["Benign"], errors="ignore").sort_values(ascending=True)
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6.5))
-_barras_clases(ax1, vc_asc, "10 clases (incluye Benign)", leyenda=True)
-_barras_clases(ax2, ataq_asc, "9 familias de ataque (excluye Benign)")
-fig.suptitle("Distribución del target — attack_cat")
-fig.tight_layout()
+_barras_clases(ax1, vc_asc, "Incluye Benign", leyenda=True)
+_barras_clases(ax2, ataq_asc, "Excluye Benign")
+fig.suptitle("Frecuencias observadas", fontsize=18)
+fig.tight_layout(rect=(0, 0, 1, 0.95))
 _guardar_fig(fig, "fig01_distribucion_clases.png")
 
 print("\n[fig02] boxplots de la selección descriptiva en escala log")
 SEL_BOX = ["dur", "sbytes", "sttl", "trans_depth", "Sjit", "Sintpkt",
-           "tcprtt", "ct_state_ttl", "ct_srv_src"]
+           "ct_state_ttl", "ct_srv_src"]
 print(f"  selección: {SEL_BOX}")
-fig, axes = plt.subplots(3, 3, figsize=(15, 10))
+fig, axes = plt.subplots(2, 4, figsize=(15, 5.5))
 for ax, col in zip(axes.ravel(), SEL_BOX):
     datos = np.log10(df[col].astype("float64").dropna().to_numpy() + 1)
-    ax.boxplot(datos, vert=True)
+    ax.boxplot(datos, orientation="vertical")
     ax.set_xticks([1])
-    ax.set_xticklabels([col], fontsize=10)
-    ax.set_ylabel("log10(x+1)", fontsize=9)
-fig.suptitle("Boxplot de las variables numéricas seleccionadas (escala log)")
-fig.tight_layout()
+    ax.set_xticklabels([col], fontsize=13)
+    ax.set_ylabel("log10(x+1)", fontsize=11)
+    ax.tick_params(axis="y", labelsize=11)
+fig.suptitle("Dispersión por variable", fontsize=18)
+fig.tight_layout(rect=(0, 0, 1, 0.95))
 _guardar_fig(fig, "fig02_boxplot_outliers.png")
 
-print("\n[fig03] correlación de features numéricas con el target binario")
-sel = ["dur", "sbytes", "dbytes", "Sload", "Dload", "Spkts", "Dpkts",
-       "sttl", "dttl", "sloss", "dloss", "res_bdy_len", "Sjit", "Djit",
-       "Sintpkt", "Dintpkt", "tcprtt", "synack", "ackdat"]
-mat = df[["Label"] + sel].corr().values
-heatmap(mat, ["Label"] + sel, ["Label"] + sel,
-        "Correlación de Pearson con el target binario",
-        "fig03_correlacion_features.png")
+print("\n[fig03] correlación de variables seleccionadas con el target")
+sel = ["Label", "sttl", "Dload", "ct_state_ttl", "ct_dst_src_ltm",
+       "ct_srv_src", "Stime", "Ltime", "swin", "dwin", "sbytes", "sloss"]
+mat = df[sel].corr().values
+heatmap(mat, sel, sel,
+        "Variables seleccionadas",
+        "fig03_correlacion_seleccion.png")
 plt.close("all")
 
 print("\n[fig04] histogramas top 9 por correlación con el target")
@@ -366,15 +367,5 @@ for ax, col in zip(axes.ravel(), top9_corr):
 fig.suptitle("Distribución del top 9 de variables numéricas por correlación con el target binario")
 fig.tight_layout()
 _guardar_fig(fig, "fig04_histogramas_top9.png")
-
-print("\n[fig05] correlación de variables de ventana ct_* con el target")
-ct_cols = ["ct_state_ttl", "ct_flw_http_mthd", "ct_ftp_cmd", "ct_srv_src",
-           "ct_srv_dst", "ct_dst_ltm", "ct_src_ ltm", "ct_src_dport_ltm",
-           "ct_dst_sport_ltm", "ct_dst_src_ltm"]
-mat = df[["Label"] + ct_cols].corr().values
-heatmap(mat, ["Label"] + ct_cols, ["Label"] + ct_cols,
-        "Correlación de las variables de ventana ct_* con el target",
-        "fig05_ct_vs_target.png")
-plt.close("all")
 
 print("\nOutputs del informe regenerados en data/eda/")

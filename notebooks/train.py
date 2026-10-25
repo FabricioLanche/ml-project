@@ -48,6 +48,33 @@ def correr_ronda(train_df, val_df, algo: str, params: dict, escala: bool,
     return metricas
 
 
+def correr_final(spark, entradas_train, entrada_test, *, algo: str, params: dict,
+                 escala: bool = True, destino="results/fase_3",
+                 limite=None, clases: dict[int, str] | None = None) -> dict[str, float]:
+    """Reentrena con todo el entrenamiento disponible y evalúa una vez en test.
+
+    `entradas_train` puede ser una ruta o un iterable de parquets (por ejemplo,
+    los cinco folds). El conjunto de test nunca participa en el ajuste.
+    """
+    if isinstance(entradas_train, (str, Path)):
+        entradas_train = [entradas_train]
+    train_df = None
+    for ruta in entradas_train:
+        parte = common.cargar_parquet(spark, ruta, limite)
+        train_df = parte if train_df is None else train_df.unionByName(parte)
+    test_df = common.cargar_parquet(spark, entrada_test, limite)
+    pipeline = common.construir_pipeline(train_df, algo, params, escala)
+    modelo = pipeline.fit(train_df)
+    pred = common.seleccionar_predicciones(modelo.transform(test_df))
+
+    ruta_salida = Path(destino)
+    ruta_salida.mkdir(parents=True, exist_ok=True)
+    pred.write.mode("overwrite").parquet(str(ruta_salida / "predicciones.parquet"))
+    common.guardar_modelo(modelo, ruta_salida / "modelo")
+    metricas = common.evaluar(pred, ruta_salida, clases=clases)
+    return metricas
+
+
 # ===========================================================================
 # Motor: corridas programáticas (sin argparse)
 # ===========================================================================

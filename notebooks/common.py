@@ -1,6 +1,7 @@
 """Pipeline MLlib compartido y utilidades de E/S"""
 
 import json
+import csv
 from pathlib import Path
 
 from pyspark.ml import Pipeline, PipelineModel
@@ -42,11 +43,9 @@ PARAMS_POR_DEFECTO: dict[str, dict] = {
     "svm": {"maxIter": 100, "regParam": 0.0, "tol": 1e-6},
 }
 
-# Métricas que se reportan por ronda. `accuracy` ya cubre el recall ponderado (con
-# una sola etiqueta verdadera por fila, `weightedRecall == accuracy`), así que no se
-# repite. `weightedF1` y `macroF1` conviven porque una pondera por soporte de clase y
-# la otra no: solo la segunda expone el mal desempeño en clases minoritarias.
-METRICAS = ("accuracy", "weightedPrecision", "weightedF1", "macroF1")
+# Métricas escalares que se reportan por corrida. Los promedios son macro: cada clase
+# pesa igual y la agregación entre folds queda a cargo del orquestador de CV.
+METRICAS = ("accuracy", "promedio_precision", "promedio_recall", "promedio_F1")
 
 
 # ===========================================================================
@@ -187,19 +186,109 @@ def construir_pipeline(df: DataFrame, algo: str, params: dict | None = None,
 # ===========================================================================
 # Evaluación y salidas
 # ===========================================================================
-def evaluar(pred: DataFrame) -> dict[str, float]:
-    """Métricas de una ronda a partir de la matriz de confusión (una sola pasada).
+def evaluar(pred: DataFrame, destino: str | Path | None = None,
+            clases: dict[int, str] | None = None) -> dict[str, float]:
+    """Evalúa predicciones y opcionalmente persiste el detalle de la evaluación.
 
-    Un único `groupBy(label, prediction)` alimenta todas las métricas. Con el
-    `MulticlassClassificationEvaluator` haría falta una pasada completa por métrica, y
-    una por etiqueta para el `macroF1` (MLlib no tiene promediado macro).
+    La agregación Spark produce como máximo una matriz 10x10, por lo que solo se
+    recogen los conteos agregados. `destino` se usa para la evaluación final; las
+    corridas de CV pueden omitirlo y recibir únicamente el resumen.
     """
     conteos = pred.groupBy("label", "prediction").count().collect()
     matriz = {
         (int(fila["label"]), int(fila["prediction"])): fila["count"]
         for fila in conteos
     }
-    return metricas_desde_matriz(matriz)
+    detalle = detalle_desde_matriz(matriz, clases)
+    if destino is not None:
+        guardar_evaluacion(detalle, destino)
+    return detalle["resumen"]
+
+
+def _nombres_clases(matriz: dict[tuple[int, int], int],
+                    clases: dict[int, str] | None) -> dict[int, str]:
+    indices = {i for par in matriz for i in par}
+    if clases:
+        indices.update(clases)
+    indices = sorted(indices)
+    return {i: (clases or {}).get(i, str(i)) for i in indices}
+
+
+def detalle_desde_matriz(
+    matriz: dict[tuple[int, int], int],
+    clases: dict[int, str] | None = None,
+) -> dict:
+    """Calcula resumen, métricas one-vs-rest y matrices desde conteos agregados."""
+    nombres = _nombres_clases(matriz, clases)
+    indices = sorted(nombres)
+    total = sum(matriz.values())
+    filas = []
+    for clase in indices:
+        tp = matriz.get((clase, clase), 0)
+        fn = sum(matriz.get((clase, pred), 0) for pred in indices if pred != clase)
+        fp = sum(matriz.get((real, clase), 0) for real in indices if real != clase)
+        tn = total - tp - fn - fp
+        soporte = tp + fn
+        precision = tp / (tp + fp) if tp + fp else 0.0
+        recall = tp / soporte if soporte else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        filas.append({
+            "clase_id": clase, "clase": nombres[clase], "support": soporte,
+            "TP": tp, "TN": tn, "FP": fp, "FN": fn,
+            "precision": precision, "recall": recall, "F1": f1,
+        })
+
+    n = len(filas)
+    correctos = sum(matriz.get((i, i), 0) for i in indices)
+    resumen = {
+        "accuracy": correctos / total if total else 0.0,
+        "promedio_precision": sum(f["precision"] for f in filas) / n if n else 0.0,
+        "promedio_recall": sum(f["recall"] for f in filas) / n if n else 0.0,
+        "promedio_F1": sum(f["F1"] for f in filas) / n if n else 0.0,
+    }
+    absoluta = [[matriz.get((real, pred), 0) for pred in indices] for real in indices]
+    normalizada = [
+        [
+            valor / sum(fila) if sum(fila) else 0.0
+            for valor in fila
+        ]
+        for fila in absoluta
+    ]
+    return {
+        "resumen": resumen,
+        "por_clase": filas,
+        "clases": [nombres[i] for i in indices],
+        "matriz": absoluta,
+        "matriz_normalizada": normalizada,
+    }
+
+
+def guardar_evaluacion(detalle: dict, destino: str | Path) -> None:
+    """Guarda el detalle de evaluación en un directorio reutilizable."""
+    ruta = Path(destino)
+    ruta.mkdir(parents=True, exist_ok=True)
+    (ruta / "metricas.json").write_text(
+        json.dumps(detalle["resumen"], indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    with (ruta / "metricas_por_clase.csv").open("w", newline="", encoding="utf-8") as fh:
+        campos = list(detalle["por_clase"][0]) if detalle["por_clase"] else []
+        escritor = csv.DictWriter(fh, fieldnames=campos)
+        escritor.writeheader()
+        escritor.writerows(detalle["por_clase"])
+    _guardar_matriz(ruta / "matriz_confusion.csv", detalle["clases"], detalle["matriz"])
+    _guardar_matriz(
+        ruta / "matriz_confusion_normalizada.csv",
+        detalle["clases"],
+        detalle["matriz_normalizada"],
+    )
+
+
+def _guardar_matriz(ruta: Path, clases: list[str], matriz: list[list]) -> None:
+    with ruta.open("w", newline="", encoding="utf-8") as fh:
+        escritor = csv.writer(fh)
+        escritor.writerow(["real\\predicha", *clases])
+        for clase, fila in zip(clases, matriz):
+            escritor.writerow([clase, *fila])
 
 
 def metricas_desde_matriz(matriz: dict[tuple[int, int], int]) -> dict[str, float]:
@@ -207,49 +296,8 @@ def metricas_desde_matriz(matriz: dict[tuple[int, int], int]) -> dict[str, float
 
     `matriz` mapea `(etiqueta_real, etiqueta_predicha) -> conteo`; las celdas ausentes
     valen 0. Es una función pura (sin Spark) para poder verificarla a mano.
-
-    `macroF1` promedia el F1 de cada clase con el mismo peso: es la métrica que deja ver
-    un mal desempeño en las clases minoritarias, que `accuracy` y `weightedF1` esconden
-    al ponderar por soporte. Solo entran las clases con soporte > 0 en el fold: una
-    clase ausente no debe aportar un F1 de 0 al promedio macro.
     """
-    total = sum(matriz.values())
-    if not total:
-        return {nombre: 0.0 for nombre in METRICAS}
-
-    reales: dict[int, int] = {}           # filas reales por clase (soporte)
-    predichas: dict[int, int] = {}        # filas predichas como esa clase
-    aciertos_por_clase: dict[int, int] = {}
-    for (real, predicha), conteo in matriz.items():
-        reales[real] = reales.get(real, 0) + conteo
-        predichas[predicha] = predichas.get(predicha, 0) + conteo
-        if real == predicha:
-            aciertos_por_clase[real] = aciertos_por_clase.get(real, 0) + conteo
-
-    precision_por_clase: dict[int, float] = {}
-    f1_por_clase: dict[int, float] = {}
-    for clase, soporte in reales.items():
-        aciertos = aciertos_por_clase.get(clase, 0)
-        falsos_positivos = predichas.get(clase, 0) - aciertos
-        denominador = aciertos + falsos_positivos
-        precision = aciertos / denominador if denominador else 0.0
-        recall = aciertos / soporte
-        precision_por_clase[clase] = precision
-        f1_por_clase[clase] = (
-            2 * precision * recall / (precision + recall) if precision + recall else 0.0
-        )
-
-    aciertos = sum(aciertos_por_clase.values())
-    return {
-        "accuracy": aciertos / total,
-        "weightedPrecision": sum(
-            precision * reales[clase] for clase, precision in precision_por_clase.items()
-        ) / total,
-        "weightedF1": sum(
-            f1 * reales[clase] for clase, f1 in f1_por_clase.items()
-        ) / total,
-        "macroF1": sum(f1_por_clase.values()) / len(f1_por_clase),
-    }
+    return detalle_desde_matriz(matriz)["resumen"]
 
 
 def seleccionar_predicciones(pred: DataFrame) -> DataFrame:

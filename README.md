@@ -32,9 +32,14 @@ ml-project/
 │       ├── base/         # Split 85/15 + folds, features sin transformar
 │       └── grid/         # Variantes de preprocesamiento por celda
 ├── results/              # Salidas del entrenamiento (métricas, modelos)
-│   ├── fase1_preproc/
-│   ├── fase2_hiperparams/
-│   └── fase3_test/
+│   ├── iteracion_N/
+│   │   ├── fase_1/
+│   │   └── fase_2/
+│   └── fase_3/            # Evaluación final sobre test
+├── slurm/                # Jobs para ejecutar el flujo en Khipu
+│   ├── 00_verificar_entorno.slurm
+│   ├── 01_preprocess.slurm
+│   └── 02_kfoldcv.slurm
 ├── docs/                 # Documento del informe (LaTeX)
 ├── requirements.txt      # Dependencias del entorno
 └── .agents/              # Documentos de trabajo internos
@@ -99,35 +104,68 @@ necesita residir íntegro en memoria.
    python3 notebooks/pre-process.py
    ```
 
-### Salidas del preprocesamiento
+## Ejecución en Khipu mediante Slurm
 
-| Archivo | Contenido |
-|---|---|
-| `data/preprocessed/base/fold_1..5.parquet` | Particiones del 85 % de entrenamiento, features sin transformar |
-| `data/preprocessed/base/test.parquet` | 15 % de prueba, sellado hasta la fase 3 |
-| `data/preprocessed/base/metadatos.json` | Cortes temporales, decisiones de limpieza y codificación del objetivo |
-| `data/preprocessed/grid/<celda>/r1..r5/` | Variante de cada celda de la rejilla, con `train` y `val` por ronda |
-| `data/preprocessed/grid/manifiesto.csv` | Receta que define cada celda (10 celdas `G00`–`G09`) |
+Los jobs Slurm ejecutan PySpark en un único nodo con `local[*]`, usando los CPU reservados
+por Slurm. Antes de enviarlos, copie o clone el repositorio en Khipu y coloque el dataset en
+`data/raw/`. Las dependencias se instalan una sola vez en el nodo de acceso, que es el
+nodo con salida a Internet; los jobs de cómputo únicamente activan el entorno.
 
-El formato parquet es obligatorio: preserva los tipos `Int8`, `Int16`, `Float32` y `boolean`
-de Pandas, que un CSV destruiría al releerlos. Los detalles del esquema de entrenamiento
-están en [`.agents/PROPUESTA_ENTRENAMIENTO.md`](.agents/PROPUESTA_ENTRENAMIENTO.md).
+```bash
+cd /ruta/al/ml-project
+bash slurm/preparar_entorno.sh
+```
+
+El script crea el entorno `ml-unsw` si todavía no existe, instala las versiones fijadas en
+`requirements.txt` y verifica Python, Java, `pandas`, `numpy`, `pyarrow` y `pyspark`. Para
+Java, primero intenta utilizar una versión 17 o superior ya disponible y luego módulos
+habituales (`java/17`, `jdk/17` u `openjdk/17`). Si no encuentra una versión compatible,
+instala `openjdk=17` desde `conda-forge` dentro del entorno del curso. Si se usa otro nombre
+de entorno o una ruta distinta al proyecto:
+
+```bash
+CONDA_ENV=mi-entorno PROJECT_DIR=/ruta/al/ml-project \
+  bash /ruta/al/ml-project/slurm/preparar_entorno.sh
+```
+
+El script deja Java 17 o superior disponible dentro del entorno. Falla explícitamente si no
+puede encontrar o instalar una versión compatible, si falta el archivo de dependencias o si
+alguno de los paquetes requeridos no puede importarse.
+
+Primero compruebe el entorno en la partición de depuración:
+
+```bash
+cd /ruta/al/ml-project
+CONDA_ENV=ml-unsw sbatch --partition=debug slurm/00_verificar_entorno.slurm
+```
+
+Después ejecute los jobs en orden. El segundo debe terminar antes de enviar el tercero:
+
+```bash
+PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw \
+  sbatch slurm/01_preprocess.slurm
+
+PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw ITERACIONES=1 \
+  sbatch slurm/02_kfoldcv.slurm
+```
+
+`01_preprocess.slurm` crea `data/preprocessed/base/` y
+`data/preprocessed/grid/`. `02_kfoldcv.slurm` ejecuta las fases 1 y 2 por modelo y la
+evaluación final de la fase 3. Para consultar el estado y los logs:
+
+```bash
+squeue -u "$USER"
+cat slurm-<jobid>-preprocess.out
+cat slurm-<jobid>-kfold.out
+```
+
+Los valores de partición, memoria, tiempo y CPU están declarados en los encabezados
+`#SBATCH` y pueden sobrescribirse al enviar el job según la cuenta y las políticas vigentes
+de Khipu. Los scripts fallan explícitamente si falta el entorno, el dataset o la salida del
+preprocesamiento anterior.
 
 ## Dataset
 
 UNSW-NB15 (Moustafa y Slay, 2015): tráfico de red capturado en el Cyber Range Lab de la ACCS. Consta de 4 archivos CSV con 2,540,047 registros y 49 columnas.
 
 La primera ejecución del análisis exploratorio descarga el dataset desde Kaggle (`harshwardhanbhangale/unsw-complete-dataset`) a la carpeta `data/raw/`. Esta carpeta está excluida del repositorio (`.gitignore`).
-
-## Decisiones de preprocesamiento
-
-El detalle argumentado de cada decisión, con los datos que la motivan, se encuentra en
-[`.agents/PROPUESTA_PREPROCESAMIENTO.md`](.agents/PROPUESTA_PREPROCESAMIENTO.md). En resumen:
-
-| Decisión | Motivo |
-|---|---|
-| Se conservan los duplicados | El 88 % de `Generic` y el 65 % de `DoS` son duplicados; eliminarlos llevaría `Benign` del 87.35 % al 95.16 % y destruiría la clase más numerosa de ataque |
-| Blancos estructurales se imputan a 0 | El blanco codifica el archivo de origen (0 %, 43.86 %, 98.49 %, 98.49 %), no el protocolo del flujo |
-| Puertos se derivan a rangos | `Benign` usa 64 581 puertos distintos y `Analysis` solo 3: el valor crudo permite memorizar la asociación puerto-clase |
-| `Stime` y `Ltime` se eliminan | Describen el instante de la captura, no el comportamiento del flujo |
-| Split cronológico 85/15 + K-Fold | Con partición aleatoria, el contexto de la ventana `ct_*` de una fila de prueba queda dentro de train; el 15 % final queda sellado y la búsqueda usa K-Fold sobre el 85 % |
