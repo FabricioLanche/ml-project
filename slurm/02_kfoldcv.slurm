@@ -24,7 +24,9 @@ PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 ITERACIONES="${ITERACIONES:-1}"
 SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-32}"
-DRIVER_MEMORY="${DRIVER_MEMORY:-100g}"
+# Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
+# al proceso Python y al overhead de Spark.
+DRIVER_MEMORY="${DRIVER_MEMORY:-80g}"
 
 cd "$PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
