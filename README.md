@@ -114,6 +114,7 @@ nodo con salida a Internet; los jobs de cómputo únicamente activan el entorno.
 ```bash
 cd /ruta/al/ml-project
 bash slurm/preparar_entorno.sh
+bash slurm/descargar_dataset.sh
 ```
 
 El script inicializa `LD_PRELOAD` antes de cargar Lmod porque la configuración de
@@ -148,7 +149,11 @@ cd /ruta/al/ml-project
 CONDA_ENV=ml-unsw sbatch --partition=debug slurm/00_verificar_entorno.slurm
 ```
 
-Después ejecute los jobs en orden. El segundo debe terminar antes de enviar el tercero:
+La descarga debe hacerse en el nodo de acceso, que tiene salida a Internet. No debe
+dejarse a `01_preprocess.slurm`, porque los nodos de cómputo no pueden acceder a
+`api.kaggle.com`. El script es idempotente: si los cuatro CSV ya están en `data/raw/`,
+no vuelve a descargarlos. Después ejecute los jobs en orden; el segundo debe terminar
+antes de enviar el tercero:
 
 ```bash
 PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw \
