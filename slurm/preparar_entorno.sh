@@ -8,10 +8,62 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="${PROJECT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-$PROJECT_DIR/requirements.txt}"
+CONDA_INSTALL_DIR="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}"
+MINIFORGE_VERSION="${MINIFORGE_VERSION:-24.11.3-2}"
 
 cd "$PROJECT_DIR"
+# Lmod en Khipu referencia LD_PRELOAD durante su inicialización. Con
+# `set -u`, la variable debe existir aunque no se necesite un preload.
+export LD_PRELOAD="${LD_PRELOAD-}"
 module purge
-module load miniconda/3.0
+if ! module load miniconda/3.0 >/dev/null 2>&1; then
+    echo "ADVERTENCIA: no se pudo cargar el módulo miniconda/3.0."
+fi
+
+if ! command -v conda >/dev/null 2>&1; then
+    echo "Conda no está disponible. Instalando Miniforge en '$CONDA_INSTALL_DIR'..."
+
+    case "$(uname -m)" in
+        x86_64) miniforge_arch="x86_64" ;;
+        aarch64|arm64) miniforge_arch="aarch64" ;;
+        *)
+            echo "ERROR: arquitectura no soportada para Miniforge: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+
+    if [[ -e "$CONDA_INSTALL_DIR" && ! -x "$CONDA_INSTALL_DIR/bin/conda" ]]; then
+        echo "ERROR: '$CONDA_INSTALL_DIR' existe, pero no contiene una instalación válida de Conda." >&2
+        echo "Defina CONDA_INSTALL_DIR con una ruta vacía o válida e inténtelo de nuevo." >&2
+        exit 1
+    fi
+
+    miniforge_file="Miniforge3-Linux-${miniforge_arch}.sh"
+    miniforge_url="${MINIFORGE_URL:-https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/${miniforge_file}}"
+    installer_path="${TMPDIR:-/tmp}/${miniforge_file}.$$"
+
+    if [[ ! -x "$CONDA_INSTALL_DIR/bin/conda" ]]; then
+        if command -v curl >/dev/null 2>&1; then
+            curl --fail --location --retry 3 --output "$installer_path" "$miniforge_url"
+        elif command -v wget >/dev/null 2>&1; then
+            wget --https-only --tries=3 --output-document="$installer_path" "$miniforge_url"
+        else
+            echo "ERROR: se requiere curl o wget para descargar Miniforge." >&2
+            exit 1
+        fi
+
+        bash "$installer_path" -b -p "$CONDA_INSTALL_DIR"
+        rm -f "$installer_path"
+    fi
+
+    export PATH="$CONDA_INSTALL_DIR/bin:$PATH"
+fi
+
+if ! command -v conda >/dev/null 2>&1; then
+    echo "ERROR: no se pudo disponer de conda mediante el módulo ni Miniforge." >&2
+    exit 1
+fi
+
 eval "$(conda shell.bash hook)"
 
 if [[ ! -f "$REQUIREMENTS_FILE" ]]; then

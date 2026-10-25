@@ -116,6 +116,15 @@ cd /ruta/al/ml-project
 bash slurm/preparar_entorno.sh
 ```
 
+El script inicializa `LD_PRELOAD` antes de cargar Lmod porque la configuración de
+Khipu puede referenciar esa variable aun cuando no esté definida en la sesión.
+También verifica que `miniconda/3.0` haya puesto `conda` en el `PATH`; si el módulo
+no está disponible, descarga e instala Miniforge automáticamente en
+`$HOME/.local/miniforge3`. La ruta se puede cambiar con `CONDA_INSTALL_DIR` y la
+versión con `MINIFORGE_VERSION`. Los jobs Slurm también buscan Conda en esa ruta
+cuando el módulo institucional no está disponible; primero debe ejecutarse el
+script de preparación en el nodo de acceso.
+
 El script crea el entorno `ml-unsw` si todavía no existe, instala las versiones fijadas en
 `requirements.txt` y verifica Python, Java, `pandas`, `numpy`, `pyarrow` y `pyspark`. Para
 Java, primero intenta utilizar una versión 17 o superior ya disponible y luego módulos
