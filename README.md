@@ -1,10 +1,10 @@
-# Detección de ataques de red multiclase sobre UNSW-NB15: análisis exploratorio y evaluación de modelos de Machine Learning
+# Detección multiclase de ataques de red con UNSW-NB15
 
-Proyecto de Machine Learning (CS3061, UTEC) para la detección de ataques de red multiclase sobre el dataset UNSW-NB15.
+Proyecto del curso de Machine Learning (CS3061, UTEC) para analizar y clasificar flujos de red en diez categorías: tráfico benigno y nueve familias de ataques.
 
 ## Objetivo
 
-Desarrollar un clasificador de tráfico de red que distinga el tráfico normal (`Benign`) de 10 familias de ataques, mediante análisis exploratorio de datos y la implementación de modelos de Machine Learning.
+Comparar modelos supervisados para la clasificación multiclase de UNSW-NB15, a partir de un análisis exploratorio, una búsqueda de variantes de preprocesamiento y el ajuste de hiperparámetros.
 
 ## Integrantes
 
@@ -16,118 +16,116 @@ Desarrollar un clasificador de tráfico de red que distinga el tráfico normal (
 
 ## Estructura del repositorio
 
-```
+```text
 ml-project/
-├── notebooks/
-│   ├── eda.ipynb         # Análisis exploratorio de datos (principal)
-│   ├── eda.py            # Versión en script (desarrollo y debugging)
-│   ├── pre-process.ipynb # Preprocesamiento e ingeniería de características
-│   └── pre-process.py    # Versión en script (desarrollo y debugging)
-├── data/                 # Datos generados (no versionado)
-│   ├── raw/              # CSVs originales de UNSW-NB15
-│   ├── eda/              # Salidas del EDA (no del entrenamiento)
-│   │   ├── tablas/       # Tablas *.csv
-│   │   └── figuras/      # Figuras *.png
-│   └── preprocessed/     # Entrada del flujo de entrenamiento
-│       ├── base/         # Split 85/15 + folds, features sin transformar
-│       └── grid/         # Variantes de preprocesamiento por celda
-├── results/              # Salidas del entrenamiento (métricas, modelos)
-│   ├── fase1_preproc/
-│   ├── fase2_hiperparams/
-│   └── fase3_test/
-├── docs/                 # Documento del informe (LaTeX)
-├── requirements.txt      # Dependencias del entorno
-└── .agents/              # Documentos de trabajo internos
+├── README.md
+├── requirements.txt
+├── docs/
+│   ├── P1.tex                    # Informe de análisis exploratorio
+│   └── P2.tex                    # Informe de metodología y resultados
+├── src/
+│   ├── eda.py                    # Análisis exploratorio; genera tablas y figuras
+│   ├── pre-process.py            # Limpieza, partición y materialización de datos
+│   ├── pipeline-train.py         # Búsqueda y entrenamiento con Spark MLlib
+│   ├── result-process.py         # Exportación de métricas y figuras finales
+│   └── utilities/
+│       ├── preprocessing-config.py # Variantes de preprocesamiento
+│       ├── hyperparams-config.py   # Parámetros base y grillas
+│       ├── training-utilities.py   # Pipelines, modelos y evaluación
+│       └── training-functions.py   # Sesión Spark y operaciones de entrenamiento
+├── data/
+│   ├── raw/                      # CSV originales descargados de Kaggle
+│   ├── eda/
+│   │   ├── tablas/               # Tablas CSV del EDA
+│   │   └── figs/                 # Figuras del EDA
+│   └── preprocessed/             # Particiones y variantes generadas; ignoradas por Git
+└── results/
+    ├── iteracion_N/              # Resultados de fases 1 y 2 y checkpoints
+    ├── fase_3/                   # Modelos y métricas sobre el conjunto de prueba
+    └── figs/                     # Figuras y tablas exportadas para el informe
 ```
 
 ## Dependencias
 
+Las versiones utilizadas están fijadas en `requirements.txt`.
+
 | Paquete | Uso |
 |---|---|
-| `pandas`, `numpy` | Carga, limpieza y transformación |
-| `matplotlib` | Figuras del EDA |
-| `kagglehub` | Descarga del dataset desde Kaggle |
-| `pyarrow` | Lectura y escritura de las particiones en parquet |
-| `pyspark` | Etapa de modelado (MLlib), requiere Java 17 |
-
-El entrenamiento con PySpark es la vía recomendada para la etapa de modelado: procesa las
-particiones de forma particionada en disco, de modo que el conjunto de 2.5M filas no
-necesita residir íntegro en memoria.
+| `pandas`, `numpy` | Carga, limpieza y transformación de datos |
+| `matplotlib` | Figuras del EDA y de resultados |
+| `kagglehub` | Descarga de UNSW-NB15 desde Kaggle |
+| `pyarrow` | Escritura y lectura de archivos Parquet |
+| `pyspark` | Entrenamiento y evaluación con Spark MLlib |
 
 ## Requisitos
 
-- **Python 3.12 o superior**. Las versiones fijadas en `requirements.txt` (`pandas` 3.0.x, `numpy` 2.5.x) requieren Python ≥ 3.12: `numpy` 2.5.x no publica builds para 3.11. Verificar: `python3 --version` en Linux o `py --version` en Windows.
-- **Java 17 o superior** para PySpark. Verificar con `java -version`.
+- Python 3.12 o superior, por la versión de NumPy fijada en `requirements.txt`.
+- Java 17, 21 o 25 para la versión de Spark fijada. Compruebe la versión disponible con `java -version`.
+- Espacio en disco y memoria suficientes para los CSV originales, los Parquet intermedios y el entrenamiento. La búsqueda completa puede tardar y usar bastantes recursos; por defecto Spark utiliza todos los procesadores disponibles (`local[*]`).
 
 ## Reproducción
 
-1. Instalar las dependencias (`pandas`, `numpy`, `matplotlib` y `kagglehub`). El uso de un entorno virtual es **opcional pero recomendado** para no afectar el intérprete global. Lo importante es instalar las dependencias con el mismo intérprete que ejecutará el script o el notebook.
+Clone el repositorio y entre a su carpeta (si aún no lo hizo):
 
-   **Linux / WSL (Ubuntu):** aquí el comando es `python3` (no `python`).
+```bash
+git clone https://github.com/FabricioLanche/ml-project.git
+cd ml-project
+```
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   python3 -m pip install -r requirements.txt
-   ```
+Luego cree un entorno e instale las dependencias.
 
-   **Windows (PowerShell o CMD):**
+**Linux o macOS:**
 
-   ```powershell
-   py -m venv .venv
-   .venv\Scripts\activate
-   python -m pip install -r requirements.txt
-   ```
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
-2. Ejecutar el análisis exploratorio (genera las tablas en `data/eda/tablas/` y las figuras en `data/eda/figuras/`):
+**Windows (PowerShell):**
 
-   - **Notebook**: abrir `notebooks/eda.ipynb` en Jupyter / VSCode y ejecutar todas las celdas. Asegurarse de que el kernel use el intérprete del entorno activado (en VSCode: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir el del `.venv`). Si el kernel usa otro Python, fallará la importación de los paquetes.
-   - **Script**: equivalente al notebook, usado durante el desarrollo y debugging.
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
 
-     ```bash
-     python3 notebooks/eda.py
-     ```
+El análisis y el preprocesamiento buscan los cuatro archivos `UNSW-NB15_1.csv` a `UNSW-NB15_4.csv` en `data/raw/`. Si no están, intentan descargarlos desde Kaggle mediante `kagglehub`; también puede colocarlos allí manualmente. Luego ejecute los pasos en orden:
 
-3. Ejecutar el preprocesamiento. Genera, en `data/preprocessed/`, el split cronológico 85/15
-   (`base/fold_1..5.parquet` y `base/test.parquet`) y las variantes de la rejilla
-   (`grid/<celda>/r1..r5/`). Además ejecuta las verificaciones de integridad (presencia de
-   las diez clases, alineación de los cortes temporales, ausencia de solapamiento de la
-   ventana `ct_*` entre particiones y ausencia de filas idénticas repartidas entre
-   conjuntos).
+```bash
+# 1. Análisis exploratorio: data/eda/tablas/ y data/eda/figs/
+python src/eda.py
 
-   ```bash
-   python3 notebooks/pre-process.py
-   ```
+# 2. Split cronológico, folds y grillas: data/preprocessed/
+python src/pre-process.py
 
-### Salidas del preprocesamiento
+# 3. Fases 1 y 2 de validación y fase 3 de prueba: results/
+python src/pipeline-train.py
 
-| Archivo | Contenido |
-|---|---|
-| `data/preprocessed/base/fold_1..5.parquet` | Particiones del 85 % de entrenamiento, features sin transformar |
-| `data/preprocessed/base/test.parquet` | 15 % de prueba, sellado hasta la fase 3 |
-| `data/preprocessed/base/metadatos.json` | Cortes temporales, decisiones de limpieza y codificación del objetivo |
-| `data/preprocessed/grid/<celda>/r1..r5/` | Variante de cada celda de la rejilla, con `train` y `val` por ronda |
-| `data/preprocessed/grid/manifiesto.csv` | Receta que define cada celda (10 celdas `G00`–`G09`) |
+# 4. Tablas y figuras finales para el informe: results/figs/
+python src/result-process.py
+```
 
-El formato parquet es obligatorio: preserva los tipos `Int8`, `Int16`, `Float32` y `boolean`
-de Pandas, que un CSV destruiría al releerlos. Los detalles del esquema de entrenamiento
-están en [`.agents/PROPUESTA_ENTRENAMIENTO.md`](.agents/PROPUESTA_ENTRENAMIENTO.md).
+El preprocesamiento deduplica antes de la partición, reserva el 15 % más reciente para prueba y crea cinco folds temporales sobre el 85 % de entrenamiento. Por defecto, limita a 100 000 filas por categoría cada conjunto de entrenamiento de fold; la validación y la prueba se mantienen completas. Para cambiar ese límite, vuelva a generar los datos antes de entrenar:
+
+```bash
+python src/pre-process.py --limite-por-categoria 50000
+```
+
+Use `--limite-por-categoria 0` para desactivar el límite. Las opciones de entrenamiento, incluida la selección de fases, modelos, memoria y número de procesadores locales, se consultan con:
+
+```bash
+python src/pipeline-train.py --help
+```
+
+Por ejemplo, para limitar Spark a cuatro procesadores:
+
+```bash
+python src/pipeline-train.py --master 'local[4]' --shuffle-partitions 8
+```
+
+`src/eda.py` y `src/pre-process.py` regeneran sus salidas al ejecutarse. `src/pipeline-train.py` usa los artefactos de `data/preprocessed/`; ejecútelo después del preprocesamiento. `src/result-process.py` requiere que la fase 3 haya terminado.
 
 ## Dataset
 
-UNSW-NB15 (Moustafa y Slay, 2015): tráfico de red capturado en el Cyber Range Lab de la ACCS. Consta de 4 archivos CSV con 2,540,047 registros y 49 columnas.
-
-La primera ejecución del análisis exploratorio descarga el dataset desde Kaggle (`harshwardhanbhangale/unsw-complete-dataset`) a la carpeta `data/raw/`. Esta carpeta está excluida del repositorio (`.gitignore`).
-
-## Decisiones de preprocesamiento
-
-El detalle argumentado de cada decisión, con los datos que la motivan, se encuentra en
-[`.agents/PROPUESTA_PREPROCESAMIENTO.md`](.agents/PROPUESTA_PREPROCESAMIENTO.md). En resumen:
-
-| Decisión | Motivo |
-|---|---|
-| Se conservan los duplicados | El 88 % de `Generic` y el 65 % de `DoS` son duplicados; eliminarlos llevaría `Benign` del 87.35 % al 95.16 % y destruiría la clase más numerosa de ataque |
-| Blancos estructurales se imputan a 0 | El blanco codifica el archivo de origen (0 %, 43.86 %, 98.49 %, 98.49 %), no el protocolo del flujo |
-| Puertos se derivan a rangos | `Benign` usa 64 581 puertos distintos y `Analysis` solo 3: el valor crudo permite memorizar la asociación puerto-clase |
-| `Stime` y `Ltime` se eliminan | Describen el instante de la captura, no el comportamiento del flujo |
-| Split cronológico 85/15 + K-Fold | Con partición aleatoria, el contexto de la ventana `ct_*` de una fila de prueba queda dentro de train; el 15 % final queda sellado y la búsqueda usa K-Fold sobre el 85 % |
+Se utiliza la versión completa de UNSW-NB15 publicada en Kaggle, compuesta por cuatro CSV con 2 540 047 registros y 49 columnas. Los archivos originales se guardan en `data/raw/`, carpeta excluida del control de versiones.

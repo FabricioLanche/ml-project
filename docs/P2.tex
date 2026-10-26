@@ -1,167 +1,137 @@
-    \documentclass[conference]{IEEEtran}
-    \IEEEoverridecommandlockouts
-    % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
-    \usepackage{cite}
-    \usepackage{amsmath,amssymb,amsfonts}
-    \usepackage{algorithmic}
-    \usepackage{graphicx}
-    \usepackage{textcomp}
-    \usepackage{xcolor}
-    \usepackage{placeins}
-    \usepackage{float}
-    \usepackage{url}
-    \renewcommand{\abstractname}{Resumen}
-    \renewcommand{\refname}{Referencias}
-    \renewcommand{\IEEEkeywordsname}{Palabras claves}
-    \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
-        T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
-    \begin{document}
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{placeins}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{stfloats} % permite figure* con [b] (doble columna abajo); se carga después de float
+\usepackage{url}
+\renewcommand{\abstractname}{Resumen}
+\renewcommand{\refname}{Referencias}
+\renewcommand{\IEEEkeywordsname}{Palabras claves}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
-    \title{Detección de ataques de red multiclase sobre UNSW-NB15: análisis exploratorio y evaluación de modelos de Machine Learning}
+% Ajustes de separación y parámetros de flotantes
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+\renewcommand{\dblfloatpagefraction}{0.8}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\floatpagefraction}{0.8}
 
-    \author{\IEEEauthorblockN{1\textsuperscript{st} Fabricio Alonso Lanche Pacsi}
-    \IEEEauthorblockA{\textit{dept. Computación} \\
-    \textit{Ciencias de la Computación}\\
-    Lima, Perú \\
-    fabricio.lanche@utec.edu.pe}
-    \and
-    \IEEEauthorblockN{2\textsuperscript{nd} Jhogan Haldo Pachacutec Aguilar}
-    \IEEEauthorblockA{\textit{dept. Computación} \\
-    \textit{Ciencias de la Computación}\\
-    Lima, Perú\\
-    jhogan.pachacutec@utec.edu.pe}
-    \and
-    \IEEEauthorblockN{3\textsuperscript{rd} Anyeli Azumi Tamara Ureta}
-    \IEEEauthorblockA{\textit{dept. Computación} \\
-    \textit{Ciencias de la Computación}\\
-    Lima, Perú \\
-    anyeli.tamara@utec.edu.pe}
-    \and
-    \IEEEauthorblockN{4\textsuperscript{th} Paulo Isael Miranda Barrientos}
-    \IEEEauthorblockA{\textit{dept. Computación} \\
-    \textit{Ciencias de la Computación}\\
-    Lima, Perú \\
-    paulo.miranda@utec.edu.pe}
-    \and
-    \IEEEauthorblockN{5\textsuperscript{th} Christopher Renato Perez Torres}
-    \IEEEauthorblockA{\textit{dept. Computación} \\
-    \textit{Ciencias de Datos}\\
-    Lima, Perú \\
-    christopher.perez@utec.edu.pe}
-    }
+% Salto de fila entre autores, con cada fila centrada
+\makeatletter
+\newcommand{\linebreakand}{%
+\end{@IEEEauthorhalign}
+\hfill\mbox{}\par
+\mbox{}\hfill\begin{@IEEEauthorhalign}
+}
+\makeatother
 
-    \maketitle
+\begin{document}
+\raggedbottom
+\title{Detección de ataques de red multiclase sobre UNSW-NB15: análisis exploratorio y evaluación de modelos de Machine Learning}
 
-    \begin{abstract}
-    Este proyecto analiza el dataset UNSW-NB15 para desarrollar y evaluar modelos de Machine Learning capaces de clasificar tráfico de red en distintas categorías de ataques, considerando el desbalance de clases, la calidad de los datos y las características más relevantes para la detección de intrusiones.
-    \end{abstract}
+\author{\IEEEauthorblockN{1\textsuperscript{st} Fabricio Alonso Lanche Pacsi}
+\IEEEauthorblockA{\textit{dept. Computación} \\
+\textit{Ciencias de la Computación}\\
+Lima, Perú \\
+fabricio.lanche@utec.edu.pe}
+\and
+\IEEEauthorblockN{2\textsuperscript{nd} Jhogan Haldo Pachacutec Aguilar}
+\IEEEauthorblockA{\textit{dept. Computación} \\
+\textit{Ciencias de la Computación}\\
+Lima, Perú\\
+jhogan.pachacutec@utec.edu.pe}
+\and
+\IEEEauthorblockN{3\textsuperscript{rd} Anyeli Azumi Tamara Ureta}
+\IEEEauthorblockA{\textit{dept. Computación} \\
+\textit{Ciencias de la Computación}\\
+Lima, Perú \\
+anyeli.tamara@utec.edu.pe}
+\linebreakand
+\IEEEauthorblockN{4\textsuperscript{th} Paulo Isael Miranda Barrientos}
+\IEEEauthorblockA{\textit{dept. Computación} \\
+\textit{Ciencias de la Computación}\\
+Lima, Perú \\
+paulo.miranda@utec.edu.pe}
+\and
+\IEEEauthorblockN{5\textsuperscript{th} Christopher Renato Perez Torres}
+\IEEEauthorblockA{\textit{dept. Computación} \\
+\textit{Ciencias de Datos}\\
+Lima, Perú \\
+christopher.perez@utec.edu.pe}
+}
 
-    \begin{IEEEkeywords}
-    UNSW-NB15, clasificación, ciberseguridad, EDA.
-    \end{IEEEkeywords}
-
-    \section{Introducción y formulación del problema}
-
-    \subsection{Motivación y relevancia del problema}
-La detección de intrusiones en redes constituye un problema relevante 
-en ciberseguridad, debido a la frecuencia y diversidad de los ataques 
-que afectan actualmente a organizaciones y sistemas informáticos. 
-Según el \textit{ENISA Threat Landscape 2025} \cite{enisa2025}, 
-los ataques DDoS representaron aproximadamente el 77\,\% de los 
-incidentes reportados durante el periodo analizado, mientras que el 
-ransomware fue identificado como una de las amenazas de mayor impacto. 
-Asimismo, el phishing estuvo involucrado en el 60\,\% de los puntos 
-iniciales de intrusión, seguido por la explotación de vulnerabilidades 
-con un 21,3\,\%.
-
-Estas cifras muestran que las amenazas no se presentan de una única forma ni tienen el mismo comportamiento o impacto. Por ello, identificar solamente si un flujo de red es malicioso o benigno puede resultar insuficiente para caracterizar adecuadamente una amenaza. En este proyecto se plantea un problema de clasificación multiclase, orientado a identificar la categoría específica a la que pertenece cada flujo de tráfico. Distinguir entre diferentes tipos de comportamiento malicioso puede proporcionar información más detallada sobre un evento de seguridad y facilitar su análisis y la elección de medidas de respuesta adecuadas.
-
-Para abordar este problema se utilizará el dataset \textbf{UNSW-NB15}, compuesto por registros de tráfico de red representados mediante variables que describen las características y el comportamiento de cada conexión. La variable objetivo del proyecto será \texttt{attack\_cat}, la cual identifica la categoría a la que pertenece cada registro, incluyendo distintos tipos de tráfico malicioso y una categoría \textit{Benign} para el tráfico no malicioso. A partir de estas variables, se buscará construir un modelo de clasificación multiclase capaz de identificar la categoría correspondiente a cada flujo de red.
-\subsection{Introducción y formulación del problema}
-Los sistemas de detección de intrusiones buscan identificar comportamientos anómalos o maliciosos dentro del tráfico de una red. Sin embargo, una clasificación limitada a únicamente determinar si un flujo es benigno o malicioso no permite conocer la naturaleza específica de la amenaza detectada. Distintos tipos de ataques pueden presentar patrones de comunicación diferentes y requerir medidas de respuesta distintas, por lo que identificar correctamente su categoría puede aportar información más útil para el análisis de un incidente de seguridad.
-La relevancia de este problema radica en que una identificación más específica del tráfico malicioso puede contribuir al desarrollo de sistemas de detección de intrusiones con mayor capacidad de análisis. Reconocer el tipo de ataque puede facilitar la priorización de alertas, el estudio de patrones de comportamiento y la selección de medidas de respuesta acordes con la amenaza identificada. Desde la perspectiva de Machine Learning, además, el problema plantea el desafío de aprender patrones que permitan generalizar la clasificación a nuevos flujos de red no observados durante el entrenamiento.
+\maketitle
 
 
-\subsection{Objetivo y tarea de Machine Learning}
 
-Este problema se abordará mediante un enfoque de aprendizaje supervisado, dado que el conjunto de datos contiene la ``verdad fundamental'' para cada uno de los registros históricos evaluados, la cual se encuentra representada explícitamente mediante la etiqueta atack\_cat (variable objetivo). Al contar con este emparejamiento, los modelos se optimizarán para aprender los patrones topológicos y de flujo de la red, tales como la duración de la conexión, el conteo de paquetes y los protocolos, y asociarlos con las etiquetas conocidas. Por este motivo, se descarta un enfoque no supervisado, como el \textit{clustering}, ya que el propósito no es descubrir estructuras o anomalías desconocidas, sino aprender a partir de ejemplos previamente categorizados.
 
-Para abordar esta tarea, se empleará una Regresión Logística Multinomial como modelo \textit{baseline}, debido a su estructura lineal y a su utilidad como referencia para evaluar modelos de mayor complejidad. Como modelos de comparación, se utilizarán una Máquina de Vectores de Soporte (SVM) y un Random Forest, lo que permitirá contrastar un modelo lineal con un clasificador basado en maximización de márgenes y con un método de ensamble basado en múltiples árboles. Esta selección cuenta con precedentes en estudios de clasificación sobre UNSW-NB15, donde se han evaluado conjuntamente modelos de Regresión Logística y métodos de clasificación basados en árboles mediante métricas de clasificación y matrices de confusión \cite{more2024enhanced}.
+\begin{abstract}
+Este trabajo evalúa la clasificación multiclase de tráfico de red utilizando UNSW-NB15, con el objetivo de distinguir tráfico benigno y nueve categorías de ataques. Se compararon tres modelos supervisados: regresión logística multinomial, SVM lineal y Random Forest. La metodología incluyó análisis exploratorio, deduplicación, preprocesamiento y validación cruzada de cinco bloques temporales, reservando el 15\,\% de los datos para prueba final. Sobre 304\,499 registros de prueba, Random Forest obtuvo el mejor desempeño, con una exactitud de 0.965 y un macro F1 de 0.609, frente a 0.490 de regresión logística y 0.452 de SVM. Los resultados muestran que una exactitud elevada puede ocultar dificultades en la identificación de ataques minoritarios. Asimismo, la distribución desigual de clases entre los bloques de validación condicionó las métricas obtenidas. Se concluye que Random Forest presentó el mejor rendimiento entre los modelos evaluados, aunque persisten limitaciones de desbalance y generalización.
+\end{abstract}
 
-El entrenamiento seguirá un esquema de partición entrenamiento-validación-prueba, destinando el 75\% de los datos al entrenamiento, el 15\% a la validación y el 10\% restante a la evaluación final.
 
-El objetivo principal del proyecto es predecir y clasificar el tráfico de red con el fin de identificar incidentes de ciberseguridad. Concretamente, la tarea de Machine Learning consiste en construir y entrenar un modelo de clasificación multiclase capaz de categorizar una conexión de red en uno de 10 estados posibles: tráfico normal (\texttt{Benign}) o una de las 9 familias de ataques cibernéticos  (\texttt{Generic}, \texttt{Exploits}, \texttt{Fuzzers}, \texttt{DoS}, \texttt{Reconnaissance}, \texttt{Analysis}, \texttt{Backdoors}, \texttt{Shellcode} y \texttt{Worms}).
+
+\begin{IEEEkeywords}
+UNSW-NB15, detección de intrusiones, clasificación multiclase, Machine Learning.
+\end{IEEEkeywords}
+
+\section{Introducción y formulación del problema}
+
+\subsection{Relevancia de la detección de intrusiones}
+
+La detección de intrusiones constituye un desafío relevante en ciberseguridad debido a la diversidad de amenazas, como ataques de denegación de servicio, explotación de vulnerabilidades y accesos no autorizados \cite{enisa2025}. Distinguir únicamente entre tráfico benigno y malicioso resulta insuficiente para caracterizar estas amenazas, pues identificar su categoría específica permite orientar el análisis de incidentes y las posibles respuestas de seguridad.
+
+En este contexto, el dataset UNSW-NB15 proporciona registros de conexiones de red etiquetados, permitiendo desarrollar modelos capaces de reconocer diferentes comportamientos de ataque. Sin embargo, el desbalance entre categorías y la similitud de ciertos patrones de tráfico representan desafíos para su clasificación y generalización.
+
+\subsection{Objetivo y tarea de aprendizaje automático}
+
+El objetivo es desarrollar y comparar modelos de aprendizaje supervisado capaces de clasificar cada flujo de UNSW-NB15 en una de diez categorías: tráfico legítimo (\texttt{Benign}) o una de nueve familias de ataques, utilizando \texttt{attack\_cat} como variable objetivo \cite{moustafa2015unsw,moustafa2016evaluation}.
+
+Se busca determinar la capacidad discriminativa de las características del tráfico y evaluar el desempeño de los clasificadores sobre datos no observados durante el entrenamiento, considerando especialmente las clases minoritarias.
+
+La comparación considera tanto el rendimiento general como la capacidad de reconocer ataques poco frecuentes, para que el predominio del tráfico benigno no oculte las limitaciones del clasificador.
 
 
 \subsection{Preguntas de investigación}
 
-\textbf{Pregunta de investigación principal:}
-
+\noindent\textbf{Pregunta de investigación principal.}
 ¿En qué medida las características de los flujos de tráfico de red del dataset UNSW-NB15 permiten clasificar correctamente cada registro como una de las distintas categorías de ataque mediante técnicas de Machine Learning?
 
-\textbf{Preguntas de investigación específicas:}
-
+\noindent\textbf{Preguntas de investigación específicas.}
 \begin{itemize}
     \item ¿Qué características del tráfico de red presentan mayor relación con la categoría de ataque identificada por \texttt{attack\_cat}?
-    
     \item ¿Existen categorías de tráfico que presenten patrones similares y, por lo tanto, sean más difíciles de distinguir entre sí?
-    
     \item ¿Cómo influye la distribución de las clases en la capacidad de identificar correctamente las distintas categorías de tráfico?
 \end{itemize}
-\FloatBarrier
 
+
+
+\clearpage
 \section{Datos y Análisis Exploratorio de Datos (EDA)}
-\label{sec:eda}
 
-Esta sección presenta el análisis exploratorio del proyecto. Los scripts y el código necesarios para reproducir el análisis se encuentran disponibles en el repositorio del proyecto \cite{repo}.
+Esta sección presenta el análisis exploratorio del proyecto. Los scripts y el código necesarios para reproducir el análisis se encuentran disponibles en el repositorio del proyecto \cite{repo}: \url{https://github.com/FabricioLanche/ml-project.git}.
 
 \subsection{Descripción del dataset}
 
-\FloatBarrier
-
-El dataset utilizado para este trabajo es UNSW-NB15, generado por 
-Moustafa y Slay \cite{moustafa2015unsw} a partir de tráfico de red 
-capturado en el Cyber Range Lab de la ACCS. Un aspecto relevante 
-para su interpretación es que las observaciones no provienen de una 
-sola sesión de captura homogénea, sino de una combinación deliberada 
-de actividad normal moderna real y comportamientos de ataque 
-sintéticos generados con la herramienta IXIA PerfectStorm 
-\cite{moustafa2015unsw}. Los propios autores señalan que este diseño 
-buscó superar las limitaciones de datasets más antiguos como KDD99 y 
-NSL-KDD, cuyo tráfico normal y patrones de ataque ya no reflejan el 
-comportamiento de redes contemporáneas \cite{moustafa2016evaluation}.
-
-El dataset completo está compuesto por 2{,}540{,}044 registros 
-distribuidos originalmente en cuatro archivos CSV 
-\cite{moustafa2015unsw}. Los autores también publicaron una partición 
-reducida en conjuntos de entrenamiento y prueba (175{,}341 y 82{,}332 
-registros, respectivamente, con una proporción aproximada de 60:40) 
-\cite{moustafa2016evaluation}; sin embargo, en este proyecto se 
-utiliza la versión completa del dataset, disponible públicamente en 
-Kaggle \cite{kaggle_unsw}, con el fin de contar con una mayor cantidad 
-de observaciones para el entrenamiento y una representación más 
-amplia de las clases minoritarias. 
-
-Cada registro representa un flujo de red bidireccional (conexión 
-cliente-servidor o servidor-cliente) caracterizado mediante variables 
-extraídas con las herramientas Argus y Bro-IDS, junto con doce 
-algoritmos adicionales desarrollados por los propios autores para 
-generar variables derivadas \cite{moustafa2015unsw}. El resultado de 
-este proceso es un total de 49 columnas por registro, entre variables 
-predictoras y variables de etiqueta.
-
-\FloatBarrier
+El dataset UNSW-NB15 \cite{moustafa2015unsw} fue generado en el Cyber Range Lab de la ACCS, combinando tráfico normal real con ataques sintéticos de IXIA PerfectStorm, con el fin de superar las limitaciones de KDD99 y NSL-KDD \cite{moustafa2016evaluation}. 
+UNSW reporta 2\,540\,044 flujos bidireccionales distribuidos en cuatro archivos CSV y 49 columnas, extraídas con Argus, Bro-IDS y doce algoritmos adicionales. En este trabajo se emplea la versión completa de Kaggle \cite{kaggle_unsw}, en lugar de la partición reducida de 175\,341 y 82\,332 registros publicada por los autores \cite{moustafa2016evaluation}. La versión completa descargada de Kaggle contiene 2\,540\,047 registros, contados directamente en sus cuatro archivos CSV. Esta cifra difiere en tres registros del total que reporta UNSW; los análisis de este trabajo utilizan el conteo de los archivos descargados.
 
 \subsection{Variables y variable objetivo}
 
-Las 49 columnas del dataset se organizan conceptualmente en cinco 
-grupos, de acuerdo con la taxonomía definida por los propios autores 
-\cite{moustafa2016evaluation}: variables de flujo, variables básicas, 
-variables de contenido, variables de tiempo y variables adicionales 
-generadas. La Tabla \ref{tab:grupos_variables} resume esta 
-organización.
-
-\FloatBarrier
+Las 49 columnas se distribuyen en cinco grupos de variables y dos etiquetas (Tabla~\ref{tab:grupos_variables}). Las variables de flujo (5) identifican la conexión mediante IP, puertos y protocolo, mientras que las básicas (13) describen propiedades como duración, bytes y TTL; las de contenido (8) registran información de cabeceras TCP y transacciones HTTP, y las temporales (9) caracterizan variaciones como el \textit{jitter} y los tiempos de \textit{handshake}. Por último, las adicionales (12) contabilizan patrones en ventanas de hasta 100 flujos, como combinaciones repetidas de IP, puerto o servicio, útiles para detectar escaneos y ráfagas. En conjunto, hay 40 variables numéricas y varias nominales, entre ellas algunas de alta cardinalidad (\texttt{srcip}, \texttt{dstip}, \texttt{sport}, \texttt{dsport}) y otras de baja (\texttt{proto}, \texttt{state}, \texttt{service}) \cite{moustafa2016evaluation}.
 
 \begin{table}[H]
 \centering
@@ -186,125 +156,62 @@ Etiquetas & 2 & attack\_cat, label \\
 \end{tabular}
 \end{table}
 
-Así pues, cada grupo captura un nivel distinto de información sobre 
-la conexión de red:
+El dataset incluye \texttt{label}, que distingue tráfico normal (0) de ataques (1), y \texttt{attack\_cat}, que identifica la categoría específica. Se adopta esta última como variable objetivo, con \texttt{Benign} como clase legítima y nueve familias de ataque que completan las diez clases. Estas abarcan desde intentos de provocar fallos mediante datos malformados (\texttt{Fuzzers}) y la explotación de vulnerabilidades (\texttt{Exploits}), hasta la saturación de recursos (\texttt{DoS}) y el acceso remoto no autorizado mediante puertas traseras (\texttt{Backdoors}). Otras categorías comprenden el sondeo de redes para identificar objetivos (\texttt{Reconnaissance}), el análisis de servicios y aplicaciones (\texttt{Analysis}), los ataques genéricos basados en técnicas comunes (\texttt{Generic}), la ejecución de código malicioso (\texttt{Shellcode}) y la propagación de malware autorreplicable (\texttt{Worms}).
 
-\begin{itemize}
-    \item Las variables de \textbf{flujo} identifican unívocamente 
-    la conexión (direcciones IP, puertos y protocolo de transporte), 
-    sin describir por sí mismas su comportamiento.
-    \item Las variables \textbf{básicas} resumen las propiedades 
-    generales del flujo, como su duración, el volumen de bytes 
-    intercambiados en cada dirección y el tiempo de vida (TTL) de 
-    los paquetes.
-    \item Las variables de \textbf{contenido} profundizan en las 
-    cabeceras TCP y en la estructura de las transacciones HTTP, 
-    aportando detalle sobre el contenido transmitido dentro de la 
-    conexión.
-    \item Las variables de \textbf{tiempo} describen la dinámica 
-    temporal del flujo, incluyendo el jitter y los tiempos de 
-    establecimiento de la conexión TCP (handshake).
-    \item Las variables \textbf{adicionales generadas} no provienen 
-    directamente de un único paquete o conexión, sino que se 
-    construyen a partir de ventanas de hasta 100 registros 
-    consecutivos, contabilizando la frecuencia con la que se repiten 
-    ciertas combinaciones de IP, puerto o servicio; este diseño 
-    busca capturar patrones de comportamiento repetitivo 
-    característicos de ciertos tipos de ataque, como los escaneos o 
-    las conexiones masivas de corta duración.
-\end{itemize}
+% [CAMBIO] Bloque de figuras adelantado (antes estaba tras «Variables y variable objetivo»).
+% Fig. 1 -> parte superior de su página; Fig. 2 -> parte inferior de la misma página.
+% Fig. 1 se declara primero para conservar la numeración.
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.7\textwidth,keepaspectratio]{output/fig01_distribucion_clases.png}
+\caption{Distribución de \texttt{attack\_cat}: las diez clases (izquierda) y las nueve familias de ataque sin \texttt{Benign} (derecha).}
+\label{fig:clases}
+\end{figure*}
 
-Respecto al tipo de dato, las variables del dataset se dividen 
-principalmente en dos tipos: numéricas (de tipo entero o de punto 
-flotante, representando magnitudes como duración, bytes o tiempos 
-entre paquetes) y nominales o categóricas (de tipo cadena de texto, 
-como \texttt{proto}, \texttt{state} y \texttt{service}) 
-\cite{moustafa2016evaluation}. Los propios autores destacan que esta 
-falta de un formato estándar entre variables numéricas y nominales 
-constituye un desafío recurrente para las técnicas de detección de 
-intrusiones basadas en aprendizaje automático 
-\cite{moustafa2016evaluation}. Este dataset esta compuesto por 41 variables 
-numéricas y un subconjunto de variables nominales de alta 
-cardinalidad (\texttt{srcip}, \texttt{dstip}, \texttt{sport}, 
-\texttt{dsport}) además de las de baja cardinalidad mencionadas 
-(\texttt{proto}, \texttt{state}, \texttt{service}).
-
-Para el etiquetado del dataset, los autores proporcionan dos variables de clase \cite{moustafa2016evaluation}: \texttt{label}, una codificación binaria donde 0 indica tráfico normal y 1 indica  tráfico de ataque; y \texttt{attack\_cat}, que identifica la categoría específica del ataque entre nueve posibilidades:
-
-\begin{itemize}
-    \item \textbf{Fuzzers}: envío masivo de datos aleatorios o  malformados a un programa o servicio con el fin de provocar fallos y descubrir vulnerabilidades.
-    \item \textbf{Analysis}: intrusiones diversas dirigidas a aplicaciones web, que incluyen escaneo de puertos, spam y  scripts embebidos en archivos HTML.
-    \item \textbf{Backdoors}: técnicas para eludir mecanismos de autenticación y obtener acceso remoto no autorizado y sigiloso a un dispositivo.
-    \item \textbf{DoS} (Denegación de Servicio): ataques que buscan saturar los recursos de memoria o procesamiento de un sistema para impedir el acceso de usuarios legítimos.
-    \item \textbf{Exploits}: secuencias de instrucciones que aprovechan una falla o vulnerabilidad específica de un sistema o red para provocar un comportamiento no previsto.
-    \item \textbf{Generic}: técnica que ataca cualquier esquema de cifrado por bloques mediante colisiones basadas en funciones hash, independientemente de la configuración del cifrado.
-    \item \textbf{Reconnaissance}: actividades de sondeo (probing) orientadas a recolectar información sobre una red para evadir sus controles de seguridad.
-    \item \textbf{Shellcode}: ataque en el que se introduce un fragmento de código malicioso que abre una shell para tomar control del equipo comprometido.
-    \item \textbf{Worms}: malware autorreplicable que se propaga de forma autónoma a través de la red explotando vulnerabilidades, sin requerir interacción del usuario.
-\end{itemize}
-De este modo, se adopta \texttt{attack\_cat} como la variable objetivo del proyecto, planteando un problema de clasificación multiclase. Bajo esta formulación, la categoría \textit{Benign} representa el flujo de red normal o legítimo, mientras que las nueve clases descritas anteriormente permiten distinguir la tipología específica de cada amenaza, superando la limitación de un esquema binario simple.
-\FloatBarrier
+\begin{figure*}[!b]
+\centering
+\includegraphics[width=0.7\textwidth,keepaspectratio]{output/fig02_boxplot_outliers.png}
+\caption{Boxplots en escala logarítmica de una selección de variables numéricas. Los puntos fuera de los bigotes corresponden a valores atípicos según el criterio IQR.}
+\label{fig:boxplot}
+\end{figure*}
 
 \subsection{Valores faltantes}
 
-\FloatBarrier
+El 57.20\,\% de los registros presenta al menos un valor ausente, concentrado en seis de las 49 columnas (Tabla~\ref{tab:faltantes}). La mayoría son ausencias estructurales: \texttt{is\_ftp\_login} y \texttt{ct\_ftp\_cmd} solo aplican a sesiones FTP y \texttt{ct\_flw\_http\_mthd} a sesiones HTTP, por lo que su ausencia indica que la variable no aplica al flujo, no un fallo de captura. Los demás faltantes afectan a \texttt{sport} (8), \texttt{dsport} (304) y \texttt{state} (8), un total de 320 filas (menos del 0.02\,\%), y provienen de tokens corruptos en la fuente original, como literales hexadecimales ilegibles y la cadena "\texttt{no}" en \texttt{state}.
 
-El conjunto de datos presenta datos faltantes en 6 de sus 49 variables, afectando al 57.20\% de las observaciones. La Tabla~\ref{tab:faltantes} desglosa la cantidad y el origen de los valores faltantes por variable.
+Los faltantes tampoco se distribuyen uniformemente entre los archivos de origen. Para \texttt{is\_ftp\_login}, el archivo 1 no presenta blancos, mientras que los archivos 3 y 4 superan el 98\,\%; además, aparecen en el 57.69\,\% del tráfico no FTP y en el 37.39\,\% del FTP. Esto sugiere que la codificación de la ausencia refleja, al menos parcialmente, la procedencia del registro y no solo el protocolo del flujo.
 
-\begin{table}[h!]
+
+\begin{table}[H]
 \centering
 \caption{Valores faltantes por columna.}
 \label{tab:faltantes}
+\footnotesize
 \begin{tabular}{lrrl}
 \hline
 \textbf{Columna} & \textbf{Faltantes} & \textbf{\%} & \textbf{Origen} \\
 \hline
-\texttt{is\_ftp\_login} & 1,430,065 & 56.30 & Protocolo FTP \\
-\texttt{ct\_ftp\_cmd}    & 1,429,879 & 56.29 & Protocolo FTP \\
-\texttt{ct\_flw\_http\_mthd} & 1,348,145 & 53.08 & Protocolo HTTP \\
-\texttt{dsport}          & 304       & 0.01  & Token corrupto \\
-\texttt{sport}           & 8         & 0.00  & Token corrupto \\
-\texttt{state}           & 8         & 0.00  & Token corrupto \\
+\texttt{is\_ftp\_login} & 1,430,065 & 56.30 & FTP \\
+\texttt{ct\_ftp\_cmd}    & 1,429,879 & 56.29 & FTP \\
+\texttt{ct\_flw\_http\_mthd} & 1,348,145 & 53.08 & HTTP \\
+\texttt{dsport}          & 304       & 0.01  & Token \\
+\texttt{sport}           & 8         & 0.00  & Token \\
+\texttt{state}           & 8         & 0.00  & Token \\
 \hline
 \end{tabular}
 \end{table}
 
-Los faltantes responden a dos orígenes distintos. Las tres variables con mayor proporción de datos faltantes están directamente asociadas al protocolo de aplicación. Cada flujo en el dataset se etiqueta con su protocolo en la variable \texttt{service} (HTTP, FTP, DNS, etc.), y las variables \texttt{is\_ftp\_login} y \texttt{ct\_ftp\_cmd} solo tienen sentido semántico en sesiones FTP, mientras que \texttt{ct\_flw\_http\_mthd} solo aplica a sesiones HTTP. Estos faltantes son valores que no existen por el propio diseño de los datos, no suponen ser problemas de captura.
-
-Sin embargo, la inspección de los cuatro archivos de origen revela que el blanco y el cero no se usan de forma homogénea para codificar esa ausencia, lo que constituye un problema de calidad de datos. El archivo 1 no contiene ni un solo valor en blanco en \texttt{is\_ftp\_login}, mientras que los archivos 3 y 4 presentan cerca del 98\,\% de blancos, como se detalla en la Tabla~\ref{tab:blancos}. Además, el blanco no sigue al protocolo, que es lo que cabría esperar si la ausencia fuera estrictamente estructural: aparece en el 57.69\,\% del tráfico que \emph{no} es FTP y en el 37.49\,\% del que sí lo es. En consecuencia, el blanco es una propiedad del archivo de procedencia y no del tráfico observado.
-
-\begin{table}[H]
-\centering
-\caption{Proporción de blancos por archivo de origen. El archivo 1 codifica la ausencia con ceros y los demás con blancos, de modo que el blanco identifica la procedencia del registro y no el protocolo del flujo.}
-\label{tab:blancos}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{lrrrr}
-\hline
-\textbf{Variable} & \textbf{Archivo 1} & \textbf{Archivo 2} & \textbf{Archivo 3} & \textbf{Archivo 4} \\
-\hline
-\texttt{is\_ftp\_login}      & 0.00\,\%  & 43.86\,\% & 98.49\,\% & 98.49\,\% \\
-\texttt{ct\_ftp\_cmd}        & 0.00\,\%  & 0.00\,\%  & 0.00\,\%  & 0.00\,\%  \\
-\texttt{ct\_flw\_http\_mthd} & 0.00\,\%  & 0.00\,\%  & 0.00\,\%  & 0.00\,\%  \\
-\hline
-\end{tabular}}
-\end{table}
-
-Los nulos restantes en \texttt{sport} (8), \texttt{dsport} (304) y \texttt{state} (8) representan menos del 0.02\% del total y provienen de tokens corruptos en la fuente original (literales hexadecimales ilegibles, guiones y espacios). Fueron marcados intencionalmente como \texttt{NaN} durante la carga de datos.
-
-\FloatBarrier
-
 \subsection{Distribución de variables y clases}
 
-\FloatBarrier
+La variable objetivo \texttt{attack\_cat} define una tarea de clasificación multiclase con diez categorías, correspondientes a nueve familias de ataque y la clase legítima \texttt{Benign}. La Fig.~\ref{fig:clases} muestra un desbalance marcado entre ellas. El 87.35\,\% de los registros corresponde a \texttt{Benign}, mientras que \texttt{Generic} concentra 215\,481 observaciones (8.48\,\%) y \texttt{Worms} apenas 174. Esto implica que un modelo puede obtener un buen desempeño global favoreciendo las clases mayoritarias, por lo que la evaluación debe reportar el rendimiento por categoría.
 
-La variable objetivo \texttt{attack\_cat} define una tarea de clasificación multiclase con 10 categorías: las 9 familias de ataque de UNSW-NB15 más la clase artificial \texttt{Benign}, que agrupa el tráfico de red normal sin etiqueta de ataque específica (identificado con \texttt{Label} = 0).
+La Tabla~\ref{tab:descriptivos} resume los estadísticos de una selección de variables numéricas pertenecientes a distintos grupos funcionales. Varias presentan asimetrías pronunciadas, con medias muy superiores a sus medianas, como \texttt{Sjit} (1\,589 frente a 19.12) y \texttt{Sintpkt} (193.32 frente a 0.47). Esto indica que las variables no comparten escala ni distribución y que sus valores extremos pueden dominar ciertas representaciones numéricas.
 
-La Tabla~\ref{tab:descriptivos} resume los estadísticos descriptivos de una selección de variables representativas por grupo funcional, de acuerdo con la Tabla~\ref{tab:grupos_variables}, e incluye tanto variables con distribuciones extremas como variables de contraste. Muchas exhiben asimetrías pronunciadas, con medias sustancialmente superiores a sus medianas, por ejemplo \texttt{Sjit} (1{,}589 frente a 19.12) o \texttt{Sintpkt} (193.32 frente a 0.47); otras presentan alta varianza en magnitudes muy dispares, como \texttt{sbytes} y \texttt{sport}. Estas distribuciones sesgadas resultan típicas del tráfico de red y confirman la necesidad de normalización durante el preprocesamiento. El detalle completo de las 41 variables numéricas está disponible en el repositorio del proyecto (\texttt{output/descriptivos.csv}).
-
-\begin{table}[h!]
+\begin{table}[!tb]
 \centering
 \caption{Estadísticos descriptivos de variables numéricas seleccionadas por grupo funcional.}
 \label{tab:descriptivos}
+\footnotesize
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{llrrrrr}
 \hline
@@ -316,397 +223,427 @@ Básicas & \texttt{sttl} & 62.78 & 31.00 & 5,569 & 0.00 & 255.00 \\
 Contenido & \texttt{trans\_depth} & 0.08 & 0.00 & 0.12 & 0.00 & 172.00 \\
 Tiempo & \texttt{Sjit} & 1,589 & 19.12 & 2.860e+08 & 0.00 & 1,483,831 \\
 Tiempo & \texttt{Sintpkt} & 193.32 & 0.47 & 7,723,748 & 0.00 & 84,371 \\
-Tiempo & \texttt{tcprtt} & 0.0062 & 0.0006 & 0.0021 & 0.00 & 10.04 \\
 Adicionales & \texttt{ct\_state\_ttl} & 0.26 & 0.00 & 0.47 & 0.00 & 6.00 \\
 Adicionales & \texttt{ct\_srv\_src} & 9.21 & 5.00 & 117.44 & 1.00 & 67.00 \\
 \hline
 \end{tabular}}
 \end{table}
 
-La Fig.~\ref{fig:boxplot} complementa los estadísticos de la
-Tabla~\ref{tab:descriptivos} mostrando la dispersión de las variables
-seleccionadas en escala logarítmica, lo que permite apreciar su asimetría y
-rango dinámico. La detección de outliers y su cuantificación se abordan en la subsección siguiente.
-
-
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{output/fig02_boxplot_outliers.png}
-\caption{Boxplots en escala logarítmica de las variables numéricas seleccionadas en la Tabla~\ref{tab:descriptivos}.}
-\label{fig:boxplot}
-\end{figure}
-
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{output/fig01_distribucion_clases.png}
-\caption{Distribución de la variable objetivo: las 10 clases (izquierda) y zoom sobre las 9 familias de ataque (derecha)}
-\label{fig:clases}
-\end{figure}
-
-Por otro lado, La Fig.~\ref{fig:clases} (izquierda) muestra que el 87.35\% de los registros corresponden a \texttt{Benign}, mientras que los ataques representan apenas el 12.65\% del total. El panel derecho, que excluye a \texttt{Benign} para apreciar el detalle de las clases minoritarias, revela que el tráfico malicioso se concentra principalmente en \texttt{Generic} (215\,481 registros, 8.48\,\%), seguido de \texttt{Exploits}, \texttt{Fuzzers}, \texttt{DoS} y \texttt{Reconnaissance}; en el extremo opuesto, \texttt{Worms} cuenta con solo 174 registros. Con esta distribución, los modelos de clasificación tenderán naturalmente a favorecer la predicción de la clase mayoritaria, requiriendo técnicas específicas de balanceo o evaluación que penalicen el error en clases minoritarias durante el entrenamiento.
-
 \subsection{Problemas de calidad y outliers}
 
-\FloatBarrier
+Además de los faltantes, se identificaron 480\,633 filas duplicadas exactas, equivalentes al 18.92\,\% de los 2\,540\,047 registros originales. En este análisis, una fila se considera duplicada cuando coincide en todos sus campos. La frecuencia varía entre clases: alcanza el 88.22\,\% en \texttt{Generic} y el 65.36\,\% en \texttt{DoS}, frente al 11.67\,\% en \texttt{Benign}. Al conservar una sola aparición de cada fila exacta, el conjunto tendría 2\,059\,414 registros y la proporción de \texttt{Benign} pasaría de 87.35\,\% a 95.16\,\%. Estas cifras muestran que las repeticiones afectan de forma desigual a las clases y podrían influir en su representación durante el entrenamiento.
 
-Más allá de los faltantes estructurales, el dataset presenta otros problemas de calidad que requieren atención. Se identificaron 480,633 filas duplicadas (18.92\% del total), correspondientes a registros con valores idénticos en todas las características y el mismo target. Estos duplicados exactos no aportan información nueva al modelo y son candidatos naturales para eliminación en el preprocesamiento. No se detectaron columnas constantes.
+La cardinalidad de las variables nominales también revela particularidades del escenario de captura. Las direcciones \texttt{srcip} y \texttt{dstip} presentan apenas 43 y 47 valores únicos, respectivamente, lo que apunta a una diversidad limitada de hosts. En cambio, \texttt{sport} y \texttt{dsport} alcanzan 64\,598 y 64\,627 valores únicos, mientras que \texttt{proto}, \texttt{state} y \texttt{service} contienen solo 135, 16 y 13 categorías. Esta combinación puede llevar a los modelos a asociar las clases con hosts o puertos específicos en lugar de con el comportamiento de los ataques, limitando su generalización a otras redes.
 
-Sin embargo, su distribución por categoría no es homogénea, sino que se concentra de forma marcada en las clases de ataque. La Tabla~\ref{tab:duplicados} desglosa el porcentaje de filas duplicadas en cada clase junto con el efecto que tendría su eliminación sobre la composición del dataset. El caso más extremo es \texttt{Generic}, donde el 88.22\% de las filas son duplicados exactos, seguido de \texttt{DoS} con 65.36\% y \texttt{Exploits} con 38.01\%, frente a apenas un 11.67\% en \texttt{Benign}. La causa es que los ataques sintéticos generados con IXIA PerfectStorm se emiten en ráfagas de flujos byte-idénticos, mientras que el tráfico benigno real presenta mayor diversidad. Como consecuencia, eliminar los duplicados no reduciría el desbalance sino que lo agravaría: la proporción de \texttt{Benign} pasaría del 87.35\% al 95.16\% y la segunda familia de ataques más numerosa, \texttt{Generic}, quedaría reducida de 215\,481 a 25\,378 registros.
-
-\begin{table}[H]
-\centering
-\caption{Concentración de filas duplicadas por categoría. La última columna muestra el efecto de la eliminación sobre la composición del dataset.}
-\label{tab:duplicados}
-\footnotesize
-\begin{tabular}{@{}lrrrrr@{}}
-\hline
-\textbf{Clase} & \textbf{Filas} & \textbf{\% dup.} & \textbf{Copias} & \textbf{\% orig.} & \textbf{\% dedup.} \\
-\hline
-\texttt{Generic}         & 215\,481 & 88.22 & 8.49 & 8.48  & 1.23  \\
-\texttt{DoS}             & 16\,353  & 65.36 & 2.89 & 0.64  & 0.28  \\
-\texttt{Exploits}        & 44\,525  & 38.01 & 1.61 & 1.75  & 1.34  \\
-\texttt{Analysis}        & 2\,677   & 18.42 & 1.23 & 0.11  & 0.11  \\
-\texttt{Backdoors}       & 2\,329   & 14.86 & 1.17 & 0.09  & 0.10  \\
-\texttt{Benign}          & 2\,218\,764 & 11.67 & 1.13 & 87.35 & 95.16 \\
-\texttt{Fuzzers}         & 24\,246  & 10.11 & 1.11 & 0.95  & 1.06  \\
-\texttt{Reconnaissance}  & 13\,987  & 4.50  & 1.05 & 0.55  & 0.65  \\
-\texttt{Worms}           & 174      & 1.72  & 1.02 & 0.01  & 0.01  \\
-\texttt{Shellcode}       & 1\,511   & 0.00  & 1.00 & 0.06  & 0.07  \\
-\hline
-\end{tabular}
-\end{table}
-
-La Tabla~\ref{tab:cardinalidad} presenta la cardinalidad de las variables nominales. Como se observa, las direcciones IP \texttt{srcip} y \texttt{dstip} presentan únicamente 43 y 47 valores únicos respectivamente, una diversidad inusualmente baja que sugiere un escenario de captura con pocos hosts activos. Los puertos, por el contrario, exhiben una alta cardinalidad: \texttt{sport} y \texttt{dsport} registran aproximadamente 65 mil valores únicos cada uno (2.5\% del total), reflejando la variabilidad esperada en puertos efímeros TCP/UDP. El resto de variables nominales (\texttt{proto}, \texttt{state} y \texttt{service}) se limita a pocas categorías distintas.
-
-\begin{table}[h!]
-\centering
-\caption{Cardinalidad de las variables nominales.}
-\label{tab:cardinalidad}
-\begin{tabular}{lrr}
-\hline
-\textbf{Variable} & \textbf{Valores únicos} & \textbf{\% del total} \\
-\hline
-\texttt{srcip}   & 43      & 0.002 \\
-\texttt{dstip}   & 47      & 0.002 \\
-\texttt{sport}   & 64,598  & 2.543 \\
-\texttt{dsport}  & 64,627  & 2.544 \\
-\texttt{proto}   & 135     & 0.005 \\
-\texttt{state}   & 16      & 0.001 \\
-\texttt{service} & 13      & 0.001 \\
-\hline
-\end{tabular}
-\end{table}
-
-Para detectar valores atípicos en variables numéricas se aplicó el criterio del rango intercuartílico (IQR), clasificando como outliers todo valor fuera del intervalo $[Q_1 - 1.5 \times \mathrm{IQR}, Q_3 + 1.5 \times \mathrm{IQR}]$. La Tabla~\ref{tab:outliers} cuantifica el porcentaje de outliers y la proporción de ceros para cada variable numérica, ordenadas por prevalencia de atípicos.
-
-Una fracción elevada de variables numéricas presenta conteos significativos de outliers, pero estos reflejan en general la forma natural de las distribuciones más que corrupción de datos. Los outliers se concentran en variables con colas largas y asimétricas, tales como \texttt{Sload} (22.17\% outliers, 0.20\% ceros), \texttt{Sjit} (18.63\% outliers, 37.93\% ceros) y \texttt{dur} (17.77\% outliers, 0.33\% ceros), que contrastan con variables acotadas como los campos TTL (\texttt{sttl}, \texttt{dttl}) y la mayoría de contadores \texttt{ct\_*}, que no presentan outliers bajo este criterio. Por otro lado, variables como \texttt{ct\_ftp\_cmd} (96.07\% ceros), \texttt{res\_bdy\_len}  (92,65\%) y \texttt{trans\_depth} (91.92\%) tienen una proporción mayoritaria de ceros, reforzando la interpretación de que estas métricas no son relevantes para todas las conexiones.
-
-\begin{table}[h!]
-\centering
-\caption{Porcentaje de outliers (criterio IQR) y proporción de ceros en las variables numéricas.}
-\label{tab:outliers}
-\footnotesize
-\begin{tabular}{lrr}
-\hline
-\textbf{Variable} & \textbf{\% outliers} & \textbf{\% ceros} \\
-\hline
-\texttt{Sload}             & 22.17 & 0.20  \\
-\texttt{ct\_src\_dport\_ltm} & 21.01 & 0.00  \\
-\texttt{Sjit}              & 18.63 & 37.93 \\
-\texttt{Dintpkt}           & 17.86 & 19.71 \\
-\texttt{dur}               & 17.77 & 0.33  \\
-\texttt{Sintpkt}           & 17.56 & 0.06  \\
-\texttt{ct\_dst\_src\_ltm} & 16.36 & 0.00  \\
-\texttt{Djit}              & 16.30 & 35.43 \\
-\texttt{ct\_dst\_ltm}      & 14.28 & 0.00  \\
-\texttt{dsport}            & 13.88 & 2.13  \\
-\texttt{Dload}             & 13.57 & 19.71 \\
-\texttt{ct\_src\_ltm}      & 13.26 & 0.00  \\
-\texttt{ct\_srv\_src}      & 12.36 & 0.00  \\
-\texttt{ct\_srv\_dst}      & 12.23 & 0.00  \\
-\texttt{dbytes}            & 11.89 & 19.69 \\
-\texttt{sbytes}            & 11.34 & 0.00  \\
-\texttt{sloss}             & 8.03  & 41.23 \\
-\texttt{smeansz}           & 6.66  & 0.00  \\
-\texttt{Dpkts}             & 5.92  & 19.69 \\
-\texttt{Spkts}             & 5.62  & 0.00  \\
-\texttt{dloss}             & 5.08  & 41.36 \\
-\texttt{ackdat}            & 4.93  & 41.55 \\
-\texttt{tcprtt}            & 4.42  & 41.54 \\
-\texttt{synack}            & 4.38  & 41.54 \\
-\texttt{dmeansz}           & 1.01  & 19.69 \\
-\texttt{dttl}              & 0.00  & 19.92 \\
-\texttt{sport}             & 0.00  & 2.13  \\
-\texttt{sttl}              & 0.00  & 0.41  \\
-\texttt{dwin}              & 0.00  & 41.28 \\
-\texttt{swin}              & 0.00  & 41.14 \\
-\texttt{stcpb}             & 0.00  & 41.25 \\
-\texttt{trans\_depth}      & 0.00  & 91.92 \\
-\texttt{Stime}             & 0.00  & 0.00  \\
-\texttt{res\_bdy\_len}     & 0.00  & 92.65 \\
-\texttt{dtcpb}             & 0.00  & 41.27 \\
-\texttt{Ltime}             & 0.00  & 0.00  \\
-\texttt{ct\_flw\_http\_mthd} & 0.00 & 82.79 \\
-\texttt{ct\_state\_ttl}    & 0.00  & 85.75 \\
-\texttt{ct\_ftp\_cmd}      & 0.00  & 96.07 \\
-\texttt{ct\_dst\_sport\_ltm} & 0.00 & 0.00  \\
-\hline
-\end{tabular}
-\end{table}
-
-\FloatBarrier
-
+En las variables numéricas, los valores atípicos se concentran en distribuciones de cola larga, especialmente en \texttt{Sload} (22.17\,\% de outliers según el criterio IQR), \texttt{ct\_src\_dport\_ltm} (21.01\,\%), \texttt{Sjit} (18.63\,\%), \texttt{Dintpkt} (17.86\,\%), \texttt{dur} (17.77\,\%) y \texttt{Sintpkt} (17.56\,\%). Por otro lado, algunas variables presentan una proporción elevada de ceros, como \texttt{ct\_ftp\_cmd} (96.07\,\%), \texttt{res\_bdy\_len} (92.65\,\%) y \texttt{trans\_depth} (91.92\,\%), debido a que sus métricas solo aplican a determinados tipos de conexión. La Fig.~\ref{fig:boxplot} presenta, en escala logarítmica, la dispersión de variables representativas. Estas diferencias entre colas largas y ceros estructurales se consideran al seleccionar las transformaciones descritas en la sección de preprocesamiento.
 \subsection{Relaciones entre variables (correlaciones)}
 
-\FloatBarrier
-
-El análisis de relaciones entre variables permite identificar patrones de asociación con el target y detectar redundancia en el espacio de características. La Fig.~\ref{fig:correlacion} muestra las correlaciones de Pearson entre las variables numéricas y el target binario. La variable \texttt{sttl} (0.90) destaca por su correlación excepcional con el target, mientras que el resto de las variables incluidas en esa figura presenta correlaciones débiles o moderadas. Entre estas, \texttt{Dload} muestra la mayor correlación negativa (--0.22), sugiriendo que variables de volumen de datos descendente son menos indicativas de ataque que otras características. Los contadores de ventana \texttt{ct\_*}, incluido \texttt{ct\_state\_ttl}, no se incorporan en esa figura de correlación general; su relación con el target se analiza por separado en la Fig.~\ref{fig:ct_corr}.
-
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{output/fig03_correlacion_features.png}
-\caption{Correlación de Pearson entre las variables numéricas y el target binario.}
-\label{fig:correlacion}
-\end{figure}
-
-La Fig.~\ref{fig:hist} complementa este análisis al mostrar cómo se distribuyen las variables clave según la clase. Observando las separaciones entre la curva de tráfico benigno y la de ataque, variables como \texttt{sttl} y \texttt{ct\_state\_ttl} exhiben diferenciación clara entre poblaciones, mientras que otras como \texttt{sport} mantienen distribuciones prácticamente idénticas.
-
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{output/fig04_histogramas_top9.png}
-\caption{Distribución de variables numéricas clave según la clase.}
-\label{fig:hist}
-\end{figure}
-
-Más allá de la correlación con el target, el espacio de características presenta alta redundancia entre predictores. Pares como \texttt{Stime} y \texttt{Ltime} (1.00), \texttt{swin} y \texttt{dwin} (0.997), y \texttt{sbytes} con \texttt{sloss} (0.96) transmiten información duplicada, requiriendo selección cuidadosa durante el modelado. Los contadores de ventana \texttt{ct\_*} presentan las correlaciones más altas con el target, encabezados por \texttt{ct\_state\_ttl} (0.874) y \texttt{ct\_dst\_src\_ltm} (0.440), como se detalla en la Fig.~\ref{fig:ct_corr}. 
-\begin{figure}[h!]
-\centering
-\includegraphics[width=\columnwidth]{output/fig05_ct_vs_target.png}
-\caption{Correlación de las variables de ventana \texttt{ct\_*} con el target.}
-\label{fig:ct_corr}
-\end{figure}
-
-En el contexto multiclase, la Tabla~\ref{tab:eta} reporta la razón de correlación $\eta^{2}$, una medida estándar de asociación entre una variable numérica y una variable categórica que no supone una relación lineal (a diferencia de la correlación de Pearson). Cuantifica la proporción de la varianza de la variable numérica que es explicada por las diferencias entre los grupos de la variable categórica, y se define como
+La asociación con el objetivo se evaluó con dos medidas complementarias. Como análisis complementario, la Fig.~\ref{fig:correlacion} muestra la correlación de Pearson con \texttt{Label}, que distingue tráfico benigno de ataque. Esta asociación binaria es orientativa para el problema multiclase; para analizar la relación con las diez categorías de \texttt{attack\_cat}, se emplea la razón de correlación $\eta^2$, estimada sobre una muestra de 500\,000 registros, cuantifica la proporción de varianza de cada variable numérica explicada por las diez clases,
 \begin{equation}
     \eta^{2} = \frac{\mathrm{SSB}}{\mathrm{SST}} = \frac{\sum_{g} n_{g}(\bar{y}_{g} - \bar{y})^{2}}{\sum_{i} (y_{i} - \bar{y})^{2}},
 \end{equation}
-donde $\bar{y}_{g}$ y $n_{g}$ son la media y el número de observaciones del grupo $g$ (cada clase de \texttt{attack\_cat}), y $\bar{y}$ es la media global; toma valores entre 0 y 1, y un valor alto indica que la variable numérica discrimina fuertemente entre las 10 clases. En este contexto los mismos predictores dominan, con \texttt{sttl} ($\eta^2 = 0.835$) y \texttt{ct\_state\_ttl} (0.777) nuevamente a la cabeza, seguidos por contadores \texttt{ct\_*} en el rango 0.22--0.32. El resto de variables presenta $\eta^2$ bajo ($ \leq 0.14$), indicando que la discriminación entre las 10 clases de ataque depende de un subconjunto reducido de características, mientras que la mayoría de variables aporta poco en el contexto multiclase.
+donde $\bar{y}_{g}$ y $n_{g}$ son la media y el número de observaciones de la clase $g$, y $\bar{y}$ es la media global. La Tabla~\ref{tab:eta} resume los diez valores más altos: \texttt{sttl} (0.835) y \texttt{ct\_state\_ttl} (0.777) encabezan la discriminación, seguidos por los contadores \texttt{ct\_*} (0.22--0.32); el resto no supera 0.14, de modo que la capacidad discriminativa se concentra en pocas variables.
 
-Esta aparente fuerza predictiva de las variables \texttt{ct\_*} requiere, no obstante, una salvedad. Al ser contadores sobre una ventana de flujos recientes, su valor es sensibles a la repetición: en las ráfagas de ataques sintéticos, decenas de flujos consecutivos comparten los mismos valores. Para aislar el efecto de la semántica del ataque frente al efecto de la repetición, se recalculó la razón $\eta^{2}$ tras eliminar las filas duplicadas. La Tabla~\ref{tab:ct_dedup} muestra que \texttt{ct\_state\_ttl} pasa de 0.780 a 0.497 y \texttt{ct\_srv\_src} de 0.284 a 0.115, una pérdida del 60\,\% en este último caso. Parte del poder discriminante de la familia \texttt{ct\_*} proviene, por tanto, de la detección de ráfagas repetitivas y no del reconocimiento del ataque en sí. Este fenómeno se documenta como limitación interpretativa y se cuantifica experimentalmente comparando el desempeño del modelo con y sin esta familia de variables.
-
+% [CAMBIO] Tabla fijada con [H]: aparece primero, justo tras el párrafo que la cita
 \begin{table}[H]
 \centering
-\caption{Efecto de la eliminación de filas duplicadas sobre la razón de correlación $\eta^{2}$ de las variables de ventana, evaluada frente a las diez categorías.}
-\label{tab:ct_dedup}
-\begin{tabular}{@{}lrr@{}}
-\hline
-\textbf{Variable} & $\eta^{2}$ completo & $\eta^{2}$ sin duplicados \\
-\hline
-\texttt{ct\_state\_ttl} & 0.780 & 0.497 \\
-\texttt{ct\_dst\_src\_ltm} & 0.325 & 0.221 \\
-\texttt{ct\_srv\_src} & 0.284 & 0.115 \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[h!]
-\centering
-\caption{Razón de correlación $\eta^2$ entre las variables numéricas y \texttt{attack\_cat} (10 clases).}
+\caption{Razón de correlación $\eta^2$ entre las variables numéricas y \texttt{attack\_cat} (diez valores más altos).}
 \label{tab:eta}
 \footnotesize
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrlr}
 \hline
 \textbf{Variable} & \textbf{$\eta^2$} & \textbf{Variable} & \textbf{$\eta^2$} \\
 \hline
-\texttt{sttl}                & 0.835 & \texttt{dsport}              & 0.049 \\
-\texttt{ct\_state\_ttl}      & 0.777 & \texttt{Dload}               & 0.048 \\
-\texttt{ct\_dst\_src\_ltm}   & 0.324 & \texttt{Sload}               & 0.041 \\
-\texttt{dttl}                & 0.307 & \texttt{sport}               & 0.030 \\
-\texttt{ct\_dst\_sport\_ltm} & 0.301 & \texttt{smeansz}             & 0.024 \\
-\texttt{ct\_srv\_dst}        & 0.290 & \texttt{Spkts}               & 0.016 \\
-\texttt{ct\_srv\_src}        & 0.283 & \texttt{Sjit}                & 0.014 \\
-\texttt{ct\_src\_dport\_ltm} & 0.274 & \texttt{Dpkts}               & 0.014 \\
-\texttt{ct\_dst\_ltm}        & 0.238 & \texttt{ct\_flw\_http\_mthd} & 0.012 \\
-\texttt{ct\_src\_ltm}        & 0.226 & \texttt{dloss}               & 0.010 \\
-\texttt{swin}                & 0.133 & \texttt{dur}                 & 0.009 \\
-\texttt{dwin}                & 0.132 & \texttt{trans\_depth}        & 0.008 \\
-\texttt{tcprtt}              & 0.105 & \texttt{sloss}               & 0.006 \\
-\texttt{ackdat}              & 0.092 & \texttt{dbytes}              & 0.006 \\
-\texttt{synack}              & 0.090 & \texttt{sbytes}              & 0.004 \\
-\texttt{dmeansz}             & 0.079 & \texttt{ct\_ftp\_cmd}        & 0.004 \\
-\texttt{Stime}               & 0.078 & \texttt{Djit}                & 0.003 \\
-\texttt{Ltime}               & 0.078 & \texttt{res\_bdy\_len}       & 0.001 \\
-\texttt{dtcpb}               & 0.073 & \texttt{Sintpkt}             & 0.001 \\
-\texttt{stcpb}               & 0.073 & \texttt{Dintpkt}             & 0.001 \\
+\texttt{sttl} & 0.835 & \texttt{ct\_srv\_dst} & 0.290 \\
+\texttt{ct\_state\_ttl} & 0.777 & \texttt{ct\_srv\_src} & 0.283 \\
+\texttt{ct\_dst\_src\_ltm} & 0.324 & \texttt{ct\_src\_dport\_ltm} & 0.274 \\
+\texttt{dttl} & 0.307 & \texttt{ct\_dst\_ltm} & 0.238 \\
+\texttt{ct\_dst\_sport\_ltm} & 0.301 & \texttt{ct\_src\_ltm} & 0.226 \\
 \hline
-\end{tabular}
+\end{tabular}}
 \end{table}
 
-\FloatBarrier
+
+La Fig.~\ref{fig:correlacion} reúne las asociaciones entre predictores y target, así como las relaciones de redundancia entre variables. Entre los contadores, \texttt{ct\_state\_ttl} (0.874) y \texttt{ct\_dst\_src\_ltm} (0.440) son los más asociados con el target. Sin embargo, esta señal puede reflejar tanto el comportamiento de los ataques como la repetición de flujos en las ráfagas capturadas. Al recalcular $\eta^2$ sin duplicados, \texttt{ct\_state\_ttl} disminuye de 0.78 a 0.50 y \texttt{ct\_srv\_src} cae de 0.28 a 0.12, lo que sugiere que parte de la capacidad discriminativa de los contadores depende de la composición de las ráfagas y no solo de patrones propios de cada clase.
+
+% [CAMBIO] [!tb] -> [!b]: la figura solo puede ir al pie, nunca encima de la tabla
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\columnwidth,trim=10 10 10 10,clip]{output/fig03_correlacion_seleccion.png}
+\caption{Matriz de correlación de Pearson entre variables seleccionadas y el target binario.}
+\label{fig:correlacion}
+\end{figure}
+
+
+La matriz también evidencia redundancia entre predictores. Las correlaciones entre \texttt{Stime} y \texttt{Ltime} (1.00), \texttt{swin} y \texttt{dwin} (0.997), y \texttt{sbytes} y \texttt{sloss} (0.954) indican que estos pares contienen información prácticamente equivalente, y se observan asociaciones elevadas incluso entre variables de grupos distintos, como \texttt{sttl} y \texttt{ct\_state\_ttl} (0.906), y entre \texttt{ct\_dst\_src\_ltm} y \texttt{ct\_srv\_src} (0.942). Estas asociaciones muestran que algunos predictores contienen información redundante, mientras que la asociación con \texttt{attack\_cat} varía considerablemente entre variables. Las decisiones sobre la selección y transformación de estos atributos se describen en la sección de preprocesamiento.
 
 \subsection{Sesgo y data leakage}
 
-A partir del análisis exploratorio, se evalúan los fenómenos de sesgo y fuga de información. El \emph{sesgo} comprende cualquier propiedad de los datos que desvíe al modelo del comportamiento general del tráfico operativo \cite{mehrabi2021survey}. Por otro lado, la \emph{fuga de información} (\emph{data leakage}) consiste en la inclusión de características no disponibles en el momento real de la predicción, introduciendo canales no deseados hacia la variable objetivo \cite{kaufman2012leakage}. Mientras el sesgo degrada la capacidad predictiva del modelo, la fuga genera una sobreestimación ilusoria de su desempeño.
-\subsubsection{Identificación y evaluación de Sesgos}
+Los hallazgos anteriores describen características que pueden limitar la generalización de los modelos. El desbalance es marcado: \texttt{Benign} representa el 87.35\,\% de los 2\,540\,047 registros, mientras que \texttt{Worms} cuenta con 174 observaciones (0.007\,\%). Además, las direcciones \texttt{srcip} y \texttt{dstip} presentan solo 43 y 47 valores distintos, respectivamente, mientras que \texttt{sport} y \texttt{dsport} superan los 64\,000. Esta combinación, junto con la concentración de la asociación multiclase en \texttt{sttl} ($\eta^2=0.835$) y \texttt{ct\_state\_ttl} ($\eta^2=0.777$), sugiere que el aprendizaje podría depender de patrones particulares de la captura. Por ello, el desempeño debe interpretarse considerando las métricas por clase y el contexto controlado en que se generaron los datos.
 
-La distribución de la variable objetivo introduce el primer sesgo, y el más evidente. El 87.35\% de los registros corresponde a tráfico Benign, mientras que los ataques representan solo el 12.65\% y se concentran principalmente en la familia Generic (Fig.~\ref{fig:clases}). La situación se agrava en el interior de las clases de ataque: la familia Worms cuenta con apenas 174 registros. Un clasificador multiclase entrenado sobre estas proporciones tenderá a favorecer la clase mayoritaria y a subrepresentar los ataques poco frecuentes. La exactitud global ocultaría ese comportamiento, por lo que la evaluación por clase resultará indispensable en la siguiente etapa.
-El segundo sesgo se constituye por un sesgo de sobrerrepresentación. Como se detalla en la Tabla~\ref{tab:duplicados}, las 480\,633 filas duplicadas (18.92\,\%) se concentran de manera marcada en las clases de ataque: el 88.22\,\% de \texttt{Generic} y el 65.36\,\% de \texttt{DoS} son duplicados exactos, frente a un 11.67\,\% en \texttt{Benign}. Es decir, los flujos repetidos no refuerzan los patrones mayoritarios sino los minoritarios de ataque, como consecuencia del carácter sintético y ráfaga de las herramientas de generación. Los flujos repetidos no aportan información nueva, pero su eliminación sí tendría un coste elevado: reduciría la proporción de tráfico benigno observable del 87.35\,\% al 95.16\,\% y eliminaría el 88\,\% de la segunda familia de ataques más numerosa. Por esta razón se conserva el dataset completo, y su efecto sobre el desempeño del modelo se verifica mediante un diagnóstico que evalúa el modelo por separado sobre filas duplicadas y no duplicadas.
+La duplicación también afecta de forma desigual a las categorías: el EDA identifica 480\,633 filas duplicadas exactas (18.92\,\% del conjunto), con proporciones de duplicados de 88.22\,\% en \texttt{Generic}, 65.36\,\% en \texttt{DoS} y 11.67\,\% en \texttt{Benign}. Si copias idénticas quedaran repartidas entre entrenamiento y evaluación, las métricas podrían sobreestimar la capacidad de reconocer observaciones nuevas. El efecto de los duplicados y el procedimiento aplicado para evitar ese solapamiento se detallan en las secciones de preprocesamiento y metodología.
 
-Adicionalmente, se identifica un \emph{sesgo de representatividad} derivado de la captura en un entorno controlado. Las direcciones IP presentan una cardinalidad inusualmente baja (43 orígenes y 47 destinos, Tabla~\ref{tab:cardinalidad}), lo que evidencia un escenario con pocos anfitriones activos. Este sesgo introduce el \emph{riesgo de memorización} y asociación espuria entre la identidad de un host y una familia de ataque específica: el clasificador arriesga memorizar direcciones IP en lugar de aprender los patrones de tráfico subyacentes, imposibilitando su generalización ante nuevas topologías de red.
-
-Por otra parte, existe un sesgo a causa del dominio de valores extremos dentro de las variables numéricas. Según la Tabla~\ref{tab:descriptivos}, variables como \texttt{Sload} exhiben asimetrías severas (media $3.7\times10^{7}$ frente a una mediana de $5.9\times10^{5}$) y una proporción elevada de observaciones clasificadas como atípicas bajo el criterio IQR (22.2\%); lo mismo ocurre en \texttt{Sjit} (18.6\%) y \texttt{dur} (17.8\%) (Tabla~\ref{tab:outliers}). Estos valores extremos constituyen la forma natural de las distribuciones y no indican corrupción de los datos, pero sin una transformación previa dominan el aprendizaje, que pasaría a depender de la magnitud del flujo en lugar de su comportamiento. Se prevé una normalización logarítmica en la etapa de preprocesamiento.
-
-Por último, el espacio de características contiene predictores redundantes. Los pares \texttt{Stime}--\texttt{Ltime} (correlación 1.00), \texttt{swin}--\texttt{dwin} (0.997) y \texttt{sbytes}--\texttt{sloss} (0.96) transmiten información duplicada. Además, el análisis multiclase mediante la razón de correlación $\eta^{2}$ indica que solo \texttt{sttl} (0.835) y \texttt{ct\_state\_ttl} (0.777) discriminan con fuerza entre las diez categorías, mientras que el resto obtiene valores inferiores o iguales a 0.14 (Tabla~\ref{tab:eta}). La redundancia sobrepondera los factores duplicados, y la gran cantidad de variables poco informativas añade ruido sin aportar capacidad de clasificación; ambos efectos se atenderán con selección de características.
-
-\subsubsection{Data leakage}
-
-La fuga de información se manifiesta en este dataset a través de tres fuentes, todas advertidas a partir del análisis exploratorio. La más directa tiene su origen en la propia construcción de la variable objetivo. La clase Benign se deriva de la etiqueta binaria \texttt{Label} (un flujo es Benign si \texttt{Label} $=$ 0), por lo que \texttt{attack\_cat} y \texttt{Label} codifican la misma información bajo dos formas: cualquier variable derivada de la etiqueta que ingresara al conjunto de características filtraría la respuesta esperada y el modelo aprendería a leer la salida en lugar de la señal de los datos. La separación entre variables de entrada y objetivo debe, por tanto, excluir explícitamente ambas columnas del modelado.
-
-
-Una segunda fuente proviene de las características de ventana temporal de la familia \texttt{ct\_*}. Según la definición de los propios autores, cada una de estas variables cuenta cuántos eventos que comparten una determinada característica ocurrieron en la ventana de las 100 conexiones más recientes, anclada en la marca de tiempo de cierre \texttt{Ltime} del propio flujo \cite{moustafa2015unsw}. Es importante precisar el sentido de esa ventana: se trata de un recuento \emph{retrospectivo}, que incluye el flujo actual y los que le preceden, y en ningún caso flujos posteriores. Una regla de detección en línea puede, por tanto, calcular estas variables en el momento en que se cierra cada conexión.
-
-Lo que sí produce fuga es el \emph{solapamiento temporal entre particiones}. Si la partición de los datos se realiza de forma aleatoria, los flujos de una misma ráfaga quedan repartidos entre entrenamiento y prueba, de modo que el contexto con el que una fila de prueba construye sus variables \texttt{ct\_*} habrá sido observado ya, con su etiqueta, durante el entrenamiento. El modelo podría entonces acertar no porque haya detectado una intrusión, sino porque haya memorizado la composición de la ráfaga a la que pertenece esa fila. La misma observación aplica a los campos de tiempo \texttt{Stime} y \texttt{Ltime}, que registran el instante de la captura y cuya inclusión como predictores haría depender el modelo del momento en que ocurrió el flujo y no de su contenido.
-
-Estas dos últimas fuentes comparten una consecuencia práctica: una partición aleatoria de los datos no las controla. Si el entrenamiento contiene conexiones temporalmente posteriores a las de prueba, el modelo puede aprovechar patrones que en producción jamais estarían disponibles. Para un dataset de tráfico de red, la partición debe respetar el orden temporal, de modo que las conexiones de prueba correspondan siempre a momentos posteriores a las de entrenamiento; esta decisión se aplica en la sección de preprocesamiento.
-
-Finalmente, los registros duplicados constituyen una vía potencial de fuga entre los conjuntos de partición. Las 480\,633 filas duplicadas son ejemplos idénticos en todas las características y con la misma clase, por lo que en un reparto aleatorio copias de un mismo flujo podrían quedar simultáneamente en entrenamiento y en prueba. Conviene señalar, no obstante, que esta vía se cierra de forma automática al ordenar el dataset por \texttt{Ltime}: las filas byte-idénticas comparten marca de tiempo y quedan contiguas, de modo que ningún corte temporal puede separarlas. La verificación correspondiente se reporta en la sección de preprocesamiento.
-
-En conclusión, el sesgo y fuga de información, pese a tener orígenes distintos, convergen en una misma consecuencia: distorsionar la relación entre el rendimiento reportado y el rendimiento real del modelo, comprometiendo desde el origen la confiabilidad del clasificador multiclase.
-
+En cuanto a la fuga de información, \texttt{Label} codifica si el flujo es benigno o malicioso, mientras que \texttt{attack\_cat} define la categoría que se busca predecir; incluir cualquiera de ellas entre los predictores proporcionaría información del objetivo. Las direcciones IP y las marcas de tiempo pueden actuar como identificadores de hosts o del momento de captura, y la alta cardinalidad de los puertos también puede favorecer asociaciones específicas de este conjunto. Estos casos representan riesgos de memorización y generalización, distintos de la inclusión directa de la etiqueta. Por su parte, las variables \texttt{ct\_*} resumen actividad en ventanas de flujos, por lo que su interpretación depende de cómo se construyeron esas ventanas y de cómo se separan los datos. Las medidas adoptadas frente a estos riesgos se describen en las secciones de preprocesamiento y protocolo de evaluación.
 
 \section{Preprocesamiento e ingeniería de características}
-\label{sec:preproc}
 
-El preprocesamiento traduce los hallazgos del análisis exploratorio en un espacio de características apto para el modelado multiclase. Las decisiones que siguen están motivadas por los problemas de calidad, sesgo y fuga de información identificados en la sección~\ref{sec:eda}, y se implementan en el repositorio del proyecto \cite{repo}. El resultado es un conjunto de 2\,540\,047 filas y 45 variables predictoras, particionado en tres conjuntos disjuntos.
+El preprocesamiento se organizó en dos partes. Primero se aplicó a todos los modelos un conjunto común de limpieza y transformación. Luego, durante el entrenamiento, se compararon variantes de variables de ventana y de razones de asimetría para seleccionar la configuración de cada modelo.
 
-\subsection{Eliminación de variables y ingeniería de puertos}
+\subsection{Transformaciones aplicadas}
 
-Se excluyen del espacio de características las variables que filtran el objetivo o que permiten atajos no generalizables. La Tabla~\ref{tab:eliminadas} resume las ocho columnas retiradas y su justificación. \texttt{attack\_cat} es el objetivo y \texttt{Label} constituye una versión binaria del mismo, por lo que incluir cualquiera de las dos filtraría la respuesta esperada. Las direcciones \texttt{srcip} y \texttt{dstip} presentan una cardinalidad anormalmente baja (43 y 47 valores únicos), lo que permite asociar de forma espuria una identidad de host con una familia de ataque. Las marcas de tiempo \texttt{Stime} y \texttt{Ltime} describen el instante de la captura y no el comportamiento del flujo; además, al concentrar la actividad en dos sesiones de captura, correlacionan con la procedencia del dato. Ambas se utilizan únicamente para ordenar y particionar el conjunto, y se descartan antes de construir la matriz de diseño.
+\begin{enumerate}
 
-Las variables \texttt{sport} y \texttt{dsport} merecen un tratamiento particular. Con 64\,598 y 64\,627 valores únicos respectivamente, su codificación \emph{one-hot} resultaría en 129\,225 categorías, inviable en memoria. Pero el problema relevante no es computacional sino estadístico: la distribución de puertos es drásticamente desigual entre clases, como se muestra en la Tabla~\ref{tab:puertos}. \texttt{Benign} utiliza 64\,581 puertos distintos, mientras que \texttt{Generic} se concentra en 79, \texttt{Fuzzers} en 12 y \texttt{Analysis} en 3. Dado que los ataques sintéticos se emitieron siempre sobre los mismos puertos, el valor crudo permite memorizar la asociación ``puerto 6881 $\rightarrow$ \texttt{Generic}'', que no se sostiene en una red real donde un atacante emplea puertos arbitrarios. Este es el mismo atajo no generalizable que se descarta en las direcciones IP.
+\item \textbf{Variable objetivo.} Se unificaron las categorías de \texttt{attack\_cat} cuyas grafías eran inconsistentes, pero correspondían a la misma clase. Por ejemplo, los registros etiquetados como ``\texttt{Backdoor}'' se integraron en ``\texttt{Backdoors}''.
 
-En consecuencia, se eliminan los valores crudos y se derivan cuatro variables de baja cardinalidad: un indicador binario de puerto efímero ($\geq 1024$) y una variable categórica de franja (bien conocido, registrado o dinámico), aplicadas tanto al puerto origen como al destino. Esta estrategia conserva la señal relevante ---un escaneo se caracteriza por apuntar a puertos altos--- sin permitir la memorización de puertos concretos.
+\item \textbf{Selección de variables.} Se excluyeron \texttt{Label}, que codifica el objetivo en forma binaria, y \texttt{attack\_cat}, que se conservó como etiqueta. También se retiraron \texttt{srcip} y \texttt{dstip}, identificadores de host, y \texttt{Stime} y \texttt{Ltime}, marcas de tiempo absolutas. El conjunto de predictores resultante quedó formado por 43 variables: cinco categóricas y 38 numéricas.
 
-\begin{table}[H]
+\item \textbf{Deduplicación.} Antes de la partición cronológica, se conservó una sola fila por combinación de predictores utilizados por el modelo y de \texttt{attack\_cat}. Para formar esta vista se excluyeron las direcciones IP y las marcas de tiempo, y los puertos se reemplazaron por su franja IANA. Por ello, también se agruparon registros que podían diferir en otras columnas originales. Tras este paso, el conjunto pasó de 2\,540\,047 a 2\,030\,029 registros.
+
+\item \textbf{Valores faltantes.} Las ausencias estructurales de \texttt{is\_ftp\_login}, \texttt{ct\_ftp\_cmd} y \texttt{ct\_flw\_http\_mthd} se reemplazaron por 0 o \texttt{False}. En los registros conservados tras la deduplicación quedaron 109 tokens corruptos en \texttt{dsport}, 8 en \texttt{sport} y 3 en \texttt{state}; estos se imputaron con la moda calculada sobre la porción de entrenamiento.
+
+\item \textbf{Variables categóricas.} Para reducir la cardinalidad de los puertos \texttt{sport} y \texttt{dsport}, ambos con unos 65\,000 valores únicos, se reemplazó cada valor por una franja IANA: bien conocido ($\leq 1023$), registrado (1024--49151), dinámico (49152--65535) o desconocido. En \texttt{proto}, se agruparon en \texttt{otros} los protocolos cuya frecuencia en entrenamiento era inferior al 0.1\,\% y aquellos que no aparecían allí. Las categorías de \texttt{state} y \texttt{service} se mantuvieron.
+
+\item \textbf{Variables numéricas y escala.} Para decidir qué variables transformar, se calculó el coeficiente de asimetría muestral
+\begin{equation}
+g_1 = \frac{n}{(n-1)(n-2)}
+\sum_{i=1}^{n}\left(\frac{x_i-\bar{x}}{s}\right)^3,
+\end{equation}
+donde $\bar{x}$ es la media, $s$ la desviación típica muestral y $n$ el número de observaciones. A las variables con $|g_1|>1$ se les aplicó $\ln(1+\max(x,0))$ para atenuar sus colas largas. Además, dentro del pipeline de entrenamiento, las variables categóricas se codificaron mediante one-hot y el vector de características se escaló dividiéndolo por su desviación típica, sin centrarlo.
+
+\item \textbf{Variables de ventana y razones de asimetría.} Estas decisiones se trataron como variantes experimentales, en vez de fijarse de antemano. Se comparó conservar o retirar las variables \texttt{ct\_*} y añadir la razón $(a-b)/(a+b)$ para paquetes, bytes, ambas o ninguna. La configuración se seleccionó según los resultados de validación descritos más adelante.
+
+\end{enumerate}
+
+\subsection{Justificación de las decisiones}
+
+\textbf{Fuga de información.} Al excluir \texttt{Label}, las direcciones IP y las marcas de tiempo de los predictores, se redujo el riesgo de que el modelo accediera indirectamente a la respuesta o memorizara hosts y sesiones de captura; \texttt{attack\_cat} se mantuvo únicamente como etiqueta. Asimismo, las transformaciones que requerían estimar parámetros se ajustaron con la porción de entrenamiento y luego se aplicaron a validación o prueba, evitando que esos conjuntos influyeran en la representación.
+
+\textbf{Duplicados y desbalance.} El EDA identificó 480\,633 filas duplicadas exactas (18.92\,\%) al comparar todos los campos originales. Para el entrenamiento se aplicó otro criterio, basado en la vista que recibía el modelo y en \texttt{attack\_cat}, sin IP ni marcas de tiempo y con puertos agrupados por franja. Así se evitó repartir entre entrenamiento y evaluación registros equivalentes para el modelo solo porque diferían en campos descartados o en el puerto exacto. Los dos criterios produjeron conteos distintos y se reportaron por separado. Con la deduplicación por vista, la proporción de \texttt{Benign} pasó de 87.35\,\% a 95.63\,\%, y \texttt{Worms} quedó con 171 registros. El desbalance restante se abordó durante el modelado mediante pesos de clase y evaluación con F1 macro.
+
+\textbf{Cardinalidad y sesgo.} La conversión de puertos a franjas y la agrupación de protocolos poco frecuentes redujeron la cantidad de categorías que habría que codificar. Con ello se evitó crear miles de columnas one-hot para los puertos y se limitó el riesgo de que valores infrecuentes quedaran asociados a clases concretas por memorización.
+
+\textbf{Asimetría y escala.} Los valores extremos se conservaron porque forman parte de la distribución del tráfico, pero la transformación logarítmica atenuó su influencia en las variables seleccionadas. Después, el escalado redujo las diferencias de magnitud que podían dominar los modelos lineales. Se omitió el centrado para preservar la representación dispersa generada por one-hot.
+
+\textbf{Valores faltantes.} En las variables estructurales, los nulos representaban la ausencia de la condición correspondiente —sin inicio de sesión o comandos FTP, o sin método HTTP—, por lo que se reemplazaron por cero o \texttt{False}. En \texttt{sport}, \texttt{dsport} y \texttt{state}, los valores ilegibles sí se trataron como datos perdidos y se imputaron con la moda del entrenamiento. Al ser pocos, esta decisión conservó categorías observadas sin introducir valores artificiales.
+
+\textbf{Variables de ventana y razones de asimetría.} Se comparó conservar o retirar las variables \texttt{ct\_*}, pues algunas mostraron asociación con la clase; entre ellas, destacó \texttt{ct\_state\_ttl} ($\eta^2=0.777$). También se probaron razones de asimetría: su $\eta^2$ fue 0.388 para paquetes y 0.241 para bytes, superior al de sus variables componentes (0.017 y 0.014 para \texttt{Spkts} y \texttt{Dpkts}; 0.004 y 0.006 para \texttt{sbytes} y \texttt{dbytes}).
+
+\section{Metodología y modelos}
+
+\subsection{Enfoque de aprendizaje y estrategia de comparación}
+Se adopta el aprendizaje supervisado porque UNSW-NB15 incluye etiquetas para las categorías que se desea reconocer. Un método no supervisado, como \textit{clustering}, permitiría explorar agrupaciones sin etiquetas, pero no respondería directamente al objetivo de evaluar la clasificación de esas categorías conocidas. La comparación se plantea con modelos de distinta estructura para analizar cómo varía su desempeño ante las mismas particiones y métricas.
+
+\subsection{Modelos y configuraciones evaluadas}
+Se comparan tres clasificadores de distinta naturaleza, siguiendo precedentes en la literatura sobre UNSW-NB15 \cite{more2024enhanced}:
+\begin{enumerate}
+    \item \textbf{Regresión Logística Multinomial (baseline):} Clasificador lineal que sirve como referencia para evaluar si una frontera de decisión lineal ofrece un desempeño competitivo.
+    \item \textbf{Máquina de Vectores de Soporte (SVM):} Clasificador lineal que maximiza el margen de separación entre clases, adaptado a la clasificación multiclase mediante la estrategia One-vs-Rest (OvR).
+    \item \textbf{Random Forest:} Método de ensamble basado en \textit{Bagging} (\textit{Bootstrap Aggregating}) que combina múltiples árboles de decisión, reduciendo varianza y capturando interacciones complejas entre predictores.
+\end{enumerate}
+
+Las configuraciones base, definidas en el script de hiperparámetros, fueron las siguientes: regresión logística multinomial con $\texttt{maxIter}=500$, $\texttt{regParam}=0$ y $\texttt{elasticNetParam}=0$; SVM lineal OvR con $\texttt{maxIter}=500$ y $\texttt{regParam}=0$; y Random Forest con 100 árboles y profundidad máxima 18. Kasongo y Sun reportaron 1000 iteraciones para regresión logística sobre UNSW-NB15, valor que sirvió como referencia y se redujo a 500 por costo computacional \cite{kasongo2020}. Para Random Forest, los 100 árboles coinciden con configuraciones reportadas por Ahmad et al. y Hussein et al.; la profundidad 18 se tomó como punto de partida de este último estudio \cite{ahmad2021,hussein2021}. Ahmad et al. también reportaron un SVM lineal con regularización muy débil; se consideró como referencia cualitativa para fijar $\texttt{regParam}=0$, sin trasladar directamente su $C$ a MLlib \cite{ahmad2021}. Los demás parámetros base siguieron valores por defecto de MLlib o decisiones del pipeline, como la semilla 42 para reproducibilidad y la estandarización externa.
+
+La búsqueda de hiperparámetros se limita a los ejes que más condicionan la capacidad de cada modelo; los demás se mantienen en sus valores base para acotar el costo de la validación cruzada (Tabla~\ref{tab:grilla_hiperparametros}). En los modelos lineales se varía la regularización, que controla el compromiso entre sesgo y varianza y, en el SVM, también la estabilidad del optimizador. En Random Forest se varían la profundidad máxima, que limita la complejidad de cada árbol, y la estrategia de selección de variables por nodo, que regula la correlación entre árboles y, con ello, la varianza del ensamble. También se evalúan pesos de clase para corregir el desbalance y mejorar el macro F1. En regresión logística y SVM se consideran los esquemas ninguno, raíz y balanceado, con pesos proporcionales a $1$, $1/\sqrt{\mathrm{frecuencia}}$ y $1/\mathrm{frecuencia}$, respectivamente; en Random Forest se comparan ninguno y balanceado.
+
+\begin{table}[!b]
 \centering
-\caption{Variables eliminadas del espacio de características y motivo de su exclusión.}
-\label{tab:eliminadas}
+\caption{Grilla de hiperparámetros por modelo.}
+\label{tab:grilla_hiperparametros}
 \footnotesize
-\begin{tabular}{@{}ll@{}}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}p{1.4cm}p{2.2cm}p{2.6cm}r@{}}
 \hline
-\textbf{Variable} & \textbf{Motivo} \\
+\textbf{Modelo} & \textbf{Eje} & \textbf{Valores} & \textbf{Celdas} \\
 \hline
-\texttt{attack\_cat} & Variable objetivo \\
-\texttt{Label} & Versión binaria del objetivo \\
-\texttt{srcip} & Identidad de host, 43 valores únicos \\
-\texttt{dstip} & Identidad de host, 47 valores únicos \\
-\texttt{Stime} & Marca de tiempo absoluta \\
-\texttt{Ltime} & Marca de tiempo absoluta \\
-\texttt{sport} & 64\,598 valores únicos \\
-\texttt{dsport} & 64\,627 valores únicos \\
+\multirow{2}{=}{Regresión logística}
+& Regularización & $0$, $10^{-4}$, $10^{-2}$ & \multirow{2}{*}{9} \\
+& Peso de clases & ninguno, raíz, balanceado & \\
 \hline
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\caption{Puertos distintos utilizados por cada categoría, evidenciando la concentración de los ataques sintéticos en un conjunto reducido de puertos frente a la diversidad del tráfico benigno.}
-\label{tab:puertos}
-\begin{tabular}{@{}lr@{\hspace{1.2cm}}lr@{}}
+\multirow{3}{=}{Random Forest}
+& Profundidad máx. & 12, 18, 25 & \multirow{3}{*}{12} \\
+& Variables por nodo & \texttt{sqrt}, \texttt{onethird} & \\
+& Peso de clases & ninguno, balanceado & \\
 \hline
-\textbf{Clase} & \textbf{Puertos} & \textbf{Clase} & \textbf{Puertos} \\
-\hline
-\texttt{Benign}         & 64\,581 & \texttt{Analysis}   & 3     \\
-\texttt{Exploits}       & 1\,507  & \texttt{Fuzzers}    & 12    \\
-\texttt{Shellcode}      & 1\,490  & \texttt{Worms}      & 10    \\
-\texttt{DoS}            & 162    & \texttt{Reconnaissance} & 9 \\
-\texttt{Generic}        & 79     & & \\
+\multirow{2}{=}{SVM lineal}
+& Regularización & $0$, $10^{-4}$, $10^{-2}$ & \multirow{2}{*}{9} \\
+& Peso de clases & ninguno, raíz, balanceado & \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsection{Tratamiento de valores faltantes}
+Los valores concretos de la grilla constituyen una exploración propia y no se atribuyen directamente a esos estudios. En regresión logística y SVM, $\texttt{regParam}\in\{0,10^{-4},10^{-2}\}$ contrasta ausencia, intensidad baja e intensidad mayor de regularización; en Random Forest, las profundidades 12 y 25 acotan el valor base 18. Las estrategias $\texttt{sqrt}$ y $\texttt{onethird}$ comparan tamaños distintos de subespacio aleatorio por nodo, siguiendo el principio de selección aleatoria de predictores de Random Forest \cite{breiman2001}. Los esquemas de peso ninguno, raíz y balanceado se probaron por el desbalance observado y el uso de macro F1; la ponderación raíz es una alternativa intermedia definida para este experimento.
 
-Se distinguen dos origenes de ausencia. El primero corresponde a los nulos por token corrupto en \texttt{sport} (8 filas), \texttt{dsport} (304) y \texttt{state} (8), que suman menos del 0.02\,\% del total. Estos se imputan por la moda, estimada exclusivamente sobre el conjunto de entrenamiento, y el valor modal resultante fue 1043 para \texttt{sport}, 53 para \texttt{dsport} y \texttt{FIN} para \texttt{state}.
+\section{Diseño experimental y evaluación}
 
-El segundo origen agrupa las tres variables con ausencias estructurales, ya discutido en la sección~\ref{sec:eda}. En lugar de codificar el blanco como una categoría explícita, se imputa a cero. La razón es que el blanco y el cero expresan la misma semántica (no aplica), y la redistribución de los archivos mezcla ambas convenciones, de modo que el blanco identifica el archivo de procedencia en lugar del protocolo del flujo. Imputar a cero reconcilia las convenciones y evita introducir una característica que discrimine el origen del registro en vez del tráfico observado. La información de protocolo no se pierde, ya que \texttt{service} se codifica en \emph{one-hot} y conserva esa distinctions. Como resultado, \texttt{ct\_ftp\_cmd} queda con un 96.07\,\% de ceros y \texttt{ct\_flw\_http\_mthd} con un 82.79\,\%, valores coherentes con el comportamiento esperado de contadores de actividad FTP y HTTP.
+\subsection{Protocolo de evaluación}
 
-\subsection{Transformación logarítmica}
+El protocolo busca seleccionar el preprocesamiento y los hiperparámetros de un clasificador supervisado de diez categorías de tráfico sin que el conjunto de prueba intervenga en ninguna decisión. Para ello, una vez deduplicado, el conjunto se divide cronológicamente según \texttt{Ltime}, de modo que cerca del 85\,\% se destina a entrenamiento y validación, mientras que el 15\,\% restante se reserva para la prueba final. Sobre la porción de entrenamiento se aplica una validación cruzada de cinco bloques temporales contiguos, en la que cada ronda valida con un bloque y entrena con los cuatro restantes. Como las variables \texttt{ct\_*} resumen los 100 registros previos a cada observación, se excluyen del entrenamiento los primeros 100 registros del bloque posterior al de validación, cuya ventana incluiría registros de validación. Además, cada \textit{fold-train} se limita a 100\,000 filas por clase, mientras que la validación y la prueba no se submuestrean. Este esquema se ejecuta en dos etapas encadenadas, en las que primero se compara el preprocesamiento con hiperparámetros fijos y luego se ajustan los hiperparámetros sobre el preprocesamiento elegido, tras lo cual el modelo se reentrena con todo el conjunto entrenamiento y se evalúa una única vez sobre la prueba (Fig.~\ref{fig:train_methodology}).
 
-Las variables de tráfico de red presentan asimetrías severas: en \texttt{sbytes}, por ejemplo, la media (4\,340) supera en tres órdenes de magnitud a la mediana (1\,470). Una estandarización ordinaria no corrige esta condición, pues al dividir por la desviación estándar, dominada por unos pocos valores extremos, comprime a la mayoría de las observaciones en un intervalo mínimo y hace que el aprendizaje dependa de la magnitud del flujo en lugar de su comportamiento.
-
-Se aplica por ello la transformación $\log(1+x)$ a toda variable numérica cuya asimetría, medida como el coeficiente de asimetría de Pearson, supere el umbral $|s| > 1$. La transformación se calcula con $\log(1+x)$ y no con $\log(x)$ porque la presencia de ceros es habitual en este dataset, llegando al 96.07\,\% en \texttt{ct\_ftp\_cmd} y al 92.65\,\% en \texttt{res\_bdy\_len}. Con este criterio se transforman 33 de las 38 variables numéricas; quedan sin transformar \texttt{stcpb}, \texttt{dtcpb}, \texttt{dwin}, \texttt{swin} y el indicador de puerto efímero, por presentar ya una distribución simétrica. La Tabla~\ref{tab:log1p} muestra el efecto de la transformación sobre las variables que más se benefician.
-
-Dos precisiones metodológicas resultan relevantes. En primer lugar, el coeficiente de asimetría se estima \emph{solamente sobre el conjunto de entrenamiento}; calcularlo sobre las 2.54\,M filas completas habría incorporado estadísticas de validación y prueba en la transformación del conjunto de entrenamiento, constituyendo una forma de fuga de información. En segundo lugar, la transformación resulta necesaria para los modelos basados en distancia y marginada, que optimizan sobre el espacio de variables, pero resulta indiferente para un Random Forest, que decide mediante umbrales y es invariante a cualquier transformación monótona. Esta distinción anticipa una de las comparaciones que se sistematizarán en la evaluación.
-
-\begin{table}[H]
+\begin{figure}[!t]
 \centering
-\caption{Efecto de la transformación logarítmica sobre las variables con mayor asimetría. La columna final muestra la reducción de $|s|$.}
-\label{tab:log1p}
-\begin{tabular}{@{}lrrr@{}}
-\hline
-\textbf{Variable} & \textbf{$|s|$ inicial} & \textbf{$|s|$ tras log} & \textbf{Reducción} \\
-\hline
-\texttt{dur}           & 525.04 & 3.84  & 99.3\,\% \\
-\texttt{sbytes}        & 154.45 & 0.18  & 99.9\,\% \\
-\texttt{trans\_depth}  & 134.57 & 3.15  & 97.7\,\% \\
-\texttt{sloss}         & 123.40 & 0.24  & 99.8\,\% \\
-\texttt{Djit}          & 98.26  & 0.85  & 99.1\,\% \\
-\texttt{Sjit}          & 48.67  & 0.46  & 99.1\,\% \\
-\texttt{Spkts}         & 23.90  & 0.31  & 98.7\,\% \\
-\texttt{Dintpkt}       & 23.74  & 1.54  & 93.5\,\% \\
-\hline
-\end{tabular}
-\end{table}
+\textbf{Pipeline de entrenamiento}\\[0.5ex]
+\includegraphics[width=0.9\columnwidth,keepaspectratio]{output/train-methodology.png}
+\caption{Metodología en tres fases. La primera compara las variantes de preprocesamiento, la segunda ajusta los hiperparámetros de cada modelo y la tercera reentrena con todo el entrenamiento y evalúa sobre prueba.}
+\label{fig:train_methodology}
+\end{figure}
 
-\subsection{Partición temporal y diseño experimental}
+En la primera etapa, la grilla de preprocesamiento de la Tabla~\ref{tab:grilla_preprocesamiento} contiene ocho celdas que resultan de cruzar la conservación o exclusión de las variables \texttt{ct\_*} con la incorporación de razones de asimetría sobre paquetes, bytes, ambos o ninguno. Cada celda conserva las transformaciones comunes descritas en la sección de preprocesamiento y varía únicamente estos dos ejes, lo que se refleja en el número de variables de la última columna.
 
-La partición se realiza por orden temporal estricto, en proporción 75\,\% para entrenamiento, 15\,\% para validación y 10\,\% para prueba. Esta decisión responde directamente a la fuga por solapamiento descrita en la sección~\ref{sec:eda}: con una partición aleatoria, el contexto de 100 conexiones que sostiene a cada variable \texttt{ct\_*} quedaría repartido entre entrenamiento y prueba, y el modelo podría memorizar la composición de las ráfagas en lugar de detectar la intrusión. Con la partición temporal, ninguna fila de prueba tiene conexiones anteriores propias dentro del conjunto de entrenamiento.
-
-Tras ordenar el conjunto por \texttt{Ltime}, los cortes se calcularon en las filas 1\,905\,077 y 2\,286\,044. Estos puntos se desplazaron ligeramente hasta alcanzar un límite de marca de tiempo, desplazando 42 y 2 respectivamente. El ajuste es necesario porque un corte que caiga entre dos registros con el mismo \texttt{Ltime} partiría un grupo de filas byte-idénticas entre dos conjuntos, que es precisamente la fuga que la partición temporal debe cerrar.
-
-La Tabla~\ref{tab:particiones} muestra la composición resultante. Las diez categorías están presentes en los tres conjuntos, pero la proporción de tráfico benigno no es homogénea: el conjunto de entrenamiento contiene un 89.91\,\% de \texttt{Benign} frente al 80.68\,\% del conjunto de prueba, y \texttt{Generic} pasa del 6.37\,\% al 13.25\,\%. Este desplazamiento no es un defecto del preprocesamiento sino una propiedad del dataset, cuya composición de tráfico cambia entre las dos sesiones de captura, descritas en la sección~\ref{sec:eda}. Su consecuencia se analiza en la discusión de resultados.
-
-La partición cronológica tiene además un coste inevitable en la clase más escasa: \texttt{Worms}, con apenas 174 registros en total, queda reducida a 24 filas de prueba. Cualquier métrica calculada sobre esta clase tendrá una incertidumbre muy elevada, por lo que se reportará su matriz de confusión con la advertencia correspondiente, sin emplearla para comparar modelos.
-
-\begin{table}[H]
+\begin{table}[!t]
 \centering
-\caption{Distribución de las diez categorías en los tres conjuntos, en porcentaje dentro de cada partición. Se incluye además el recuento absoluto para las clases más escasas.}
-\label{tab:particiones}
+\caption{Grilla de preprocesamiento.}
+\label{tab:grilla_preprocesamiento}
 \footnotesize
-\begin{tabular}{@{}lrrrrr@{}}
+\begin{tabular}{@{}lccr@{}}
 \hline
-\textbf{Clase} & \textbf{\% train} & \textbf{\% val} & \textbf{\% test} & \textbf{n train} & \textbf{n test} \\
+\textbf{Celda} & \textbf{\texttt{ct\_*}} & \textbf{Asimetría} & \textbf{Variables} \\
 \hline
-\texttt{Benign}         & 89.91 & 78.98 & 80.68 & 1\,712\,924 & 204\,936 \\
-\texttt{Generic}        & 6.37  & 15.88 & 13.25 & 121\,326   & 33\,656  \\
-\texttt{Exploits}       & 1.57  & 2.23  & 2.42  & 29\,882    & 6\,156   \\
-\texttt{Fuzzers}        & 0.85  & 1.14  & 1.43  & 16\,273    & 3\,638   \\
-\texttt{DoS}            & 0.57  & 0.75  & 1.03  & 10\,865    & 2\,620   \\
-\texttt{Reconnaissance}  & 0.48  & 0.71  & 0.81  & 9\,207     & 2\,059   \\
-\texttt{Analysis}       & 0.10  & 0.11  & 0.13  & 1\,912     & 335     \\
-\texttt{Backdoors}      & 0.08  & 0.10  & 0.14  & 1\,585     & 353     \\
-\texttt{Shellcode}      & 0.05  & 0.08  & 0.09  & 990       & 226     \\
-\texttt{Worms}          & 0.01  & 0.01  & 0.01  & 113       & 24      \\
+G00 & Sí & Ninguna & 43 \\
+G01 & No & Ninguna & 33 \\
+G02 & Sí & Paquetes & 44 \\
+G03 & No & Paquetes & 34 \\
+G04 & Sí & Bytes & 44 \\
+G05 & No & Bytes & 34 \\
+G06 & Sí & Paquetes y bytes & 45 \\
+G07 & No & Paquetes y bytes & 35 \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsection{Verificación del preprocesamiento}
+En la segunda etapa, se fija el preprocesamiento en la celda ganadora y se evalúa la grilla de hiperparámetros descrita en la sección de modelos. Esta grilla contiene nueve configuraciones para regresión logística, doce para Random Forest y nueve para SVM.
 
-Todo el proceso se acompaña de seis comprobaciones automáticas que deben satisfacerse para dar por válida la salida. La primera confirma que las diez categorías están presentes en los tres conjuntos. La segunda y tercera verifican que ningún corte temporal parte un grupo de registros con la misma marca de tiempo y que cero por ciento del contexto previo de una fila de prueba pertenece al conjunto de entrenamiento. La cuarta comprueba que ningún grupo de filas byte-idénticas aparece en dos particiones distintas. Las dos restantes confirman que el objetivo y su versión binaria están ausentes del espacio de características. Las seis verificaciones se ejecutan sobre el conjunto completo de 2\,540\,047 registros y quedan registradas en los metadatos del preprocesamiento.
+\FloatBarrier
+\subsection{Métricas de evaluación}
 
-\section{Siguientes pasos}
+El desbalance del conjunto de entrenamiento, que concentra el 96.11\,\% de los registros en \texttt{Benign}, vuelve insuficiente la exactitud global (\textit{accuracy}), pues un modelo que predijera siempre la clase mayoritaria la alcanzaría en un valor elevado sin identificar ninguna familia de ataque. Por ello se adopta el macro F1 como métrica principal, complementada con precisión, recall y matrices de confusión. Cada clase $c$ se evalúa con un enfoque \textit{One-vs-Rest} a partir de sus verdaderos positivos ($TP_c$), falsos positivos ($FP_c$) y falsos negativos ($FN_c$), con los que se obtienen la precisión, el recall y el F1 por clase según
 
-Sobre la base del espacio de características ya construido, la fase siguiente se estructura en tres etapas orientadas al modelado y la evaluación.
+\begin{equation}
+\begin{aligned}
+P_c &= \frac{TP_c}{TP_c+FP_c}, \qquad
+R_c = \frac{TP_c}{TP_c+FN_c},\\
+F1_c &= \frac{2P_cR_c}{P_c+R_c}.
+\end{aligned}
+\end{equation}
 
-En primer lugar, se desarrollará el estudio teórico y la implementación de los modelos seleccionados: la regresión logística multinomial, que actúa como \textit{baseline} por su estructura lineal, la Máquina de Vectores de Soporte y el Random Forest. La comparación permitirá contrastar un modelo lineal, un clasificador por maximización de margen y un ensamble de árboles, y evaluar el efecto de la transformación logarítmica, irrelevante para el tercero.
+La precisión ($P_c$) mide la proporción de predicciones positivas correctas y cuantifica las falsas alarmas, que consumen recursos de análisis. El recall ($R_c$) representa la proporción de flujos reales de una categoría que se detectan correctamente, de modo que un valor bajo implica falsos negativos, especialmente graves cuando un ataque no se identifica como su categoría real. El F1 combina ambas métricas mediante su media armónica y penaliza el desequilibrio entre ellas. Para las $C=10$ categorías, cada métrica se promedia como
 
-En segundo lugar, se realizará el ajuste de cada modelo, incluyendo la búsqueda de hiperparámetros sobre el conjunto de validación. La ponderación de clases por desbalance no se asumirá: se entrenará cada modelo en su configuración ordinaria y con ponderación, y se elegirá la variante que mejor macro-F1 alcance en validación, reportando siempre el desglose de métricas por categoría para que el efecto sobre la precisión de \texttt{Benign} quede visible.
+\begin{equation}
+M_{\mathrm{macro}}=
+\frac{1}{C}\sum_{c=1}^{C}M_c,
+\quad M\in\{P,R,F1\}.
+\end{equation}
 
-Finalmente, la evaluación se apoyará en métricas apropiadas para datos desbalanceados, evitando la accuracy global como criterio principal, en matrices de confusión y en el diagnóstico diferencial entre filas duplicadas y no duplicadas descrito en la sección anterior. El análisis de errores incluirá la comparación del modelo con y sin la familia de variables \texttt{ct\_*}, a fin de cuantificar la contribución de las variables de ventana a la predicción.
+A diferencia del promedio micro, que agrega las predicciones de todas las clases, y del ponderado, que las pesa según su frecuencia, el macro F1 otorga igual importancia a cada categoría. Esto evita que \texttt{Benign} domine la evaluación y permite valorar ataques minoritarios como \texttt{Worms}. No obstante, no distingue la gravedad de confundir dos familias de ataque frente a clasificar un ataque como tráfico benigno, por lo que se complementa con el recall por clase y las matrices de confusión, que revelan errores específicos y categorías difíciles de distinguir.
 
+\subsection{Criterios de agregación y selección}
+
+Para cada configuración se calculan la media y la desviación estándar muestral del macro F1 a lo largo de las $K=5$ particiones, según
+
+\begin{equation}
+\begin{aligned}
+\overline{F1} &= \frac{1}{K}
+\sum_{j=1}^{K}F1_j,\\
+s_{F1} &= \sqrt{
+\frac{\sum_{j=1}^{K}(F1_j-\overline{F1})^2}
+{K-1}}.
+\end{aligned}
+\end{equation}
+
+La media describe el rendimiento promedio y la desviación estándar su estabilidad entre particiones, pero ninguna de las dos determina por sí sola la configuración ganadora. Esta se define aplicando una jerarquía de criterios en la que las configuraciones se ordenan primero por mayor macro F1 promedio y, ante empates, por mayor recall macro, luego por mayor precisión macro y, por último, por menor desviación estándar del macro F1.
+
+\section{Resultados y análisis}
+
+\subsection{Presentación de resultados}
+
+Las dos primeras fases fijaron la configuración de cada modelo sin intervención del conjunto de prueba. En la fase 1, Random Forest se orientó hacia la celda G05, que excluye las variables \texttt{ct\_*} e incorpora la razón de asimetría de bytes, mientras que la regresión logística y el SVM conservaron dichas variables y adoptaron la razón de bytes (G04) y de paquetes (G02), respectivamente, de modo que las configuraciones partieron de 34 variables originales para el ensamble y 44 para los modelos lineales; tras la codificación, quedaron 74 y 84 variables, respectivamente (Tabla~\ref{tab:parametros_finales}). En la fase 2, Random Forest quedó con 100 árboles, profundidad máxima 25, un tercio de las variables por nodo y pesos de clase balanceados, y los modelos lineales con regularización nula y pesos proporcionales a $1/\sqrt{\text{frecuencia}}$.
+
+El orden observado en validación se mantuvo en los 304\,499 flujos de prueba. Las caídas de exactitud (0.015--0.024) fueron menores que las de macro F1 (0.085--0.111). Esta diferencia debe leerse considerando que el bloque \texttt{r2}, compuesto solo por tráfico benigno, elevó las medias de validación: allí el macro F1 se calculó únicamente sobre la clase presente. La Tabla~\ref{tab:val_vs_prueba} recoge los valores por modelo y métrica.
+
+La Fig.~\ref{fig:metricas_prueba} desglosa las métricas de prueba. La exactitud superó al macro F1 en 0.356, 0.463 y 0.499, respectivamente; esta brecha muestra cómo la exactitud global, dominada por \texttt{Benign}, puede ocultar el menor desempeño en otras clases. En los tres modelos, el recall macro superó a la precisión macro. Este patrón es consistente con el efecto buscado al ponderar las clases: aumentar la cobertura de categorías minoritarias, con más falsos positivos.
+
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.85\textwidth,keepaspectratio]{output/resultados_fase3_metricas.png}
+    \caption{Métricas finales sobre el conjunto de prueba.}
+    \label{fig:metricas_prueba}
+\end{figure*}
+
+
+\begin{table}[!t]
+\centering
+\caption{Complejidad de los modelos finales.}
+\label{tab:parametros_finales}
+\footnotesize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}p{0.22\columnwidth} p{0.34\columnwidth} p{0.36\columnwidth}@{}}
+\hline
+\textbf{Modelo} & \textbf{Parámetros aprendidos} & \textbf{Tamaño} \\
+\hline
+Random Forest & 100 árboles, 74 variables codificadas & 1.56M nodos, 782k hojas, prof. 25 \\
+Regresión logística & 840 coeficientes + 10 interceptos, 84 variables & 840 no nulos, matriz $10\times84$ \\
+SVM lineal & 840 coeficientes + 10 interceptos, 84 variables & 790 no nulos, 10 clasificadores \\
+\hline
+\end{tabular}
+\end{table}
+
+La Tabla~\ref{tab:parametros_finales} resume el tamaño de los modelos finales. Random Forest contiene 1.56M nodos, 782k hojas y alcanza una profundidad de 25; la mediana es de tres observaciones por hoja. Los modelos lineales tienen 840 coeficientes y 10 interceptos: los 840 coeficientes de la regresión logística son distintos de cero, mientras que el SVM anula 50.
+
+\subsection{Comparación de modelos}
+
+Random Forest fue el mejor modelo en las cuatro métricas. Su macro F1 superó en 0.119 a la regresión logística y en 0.157 al SVM, con una ventaja mayor en precisión (0.168 y 0.200) que en recall (0.087 y 0.147), por lo que el ensamble alcanzó tanto mayor cobertura media por clase como mayor precisión media por clase. La precisión macro fue 0.618, frente a 0.450 y 0.418 en los modelos lineales; cada valor corresponde al promedio no ponderado de la precisión de las diez clases.
+
+Entre estos últimos, la regresión logística superó al SVM en 0.038 de macro F1, 0.061 de recall y 0.031 de precisión, una ventaja que también se observa en la validación, aunque con una dispersión entre particiones elevada que se retoma al discutir las limitaciones del estudio.
+
+La ventaja de Random Forest no es uniforme, como muestra la Fig.~\ref{fig:f1_clases}. Se concentra en DoS y Worms, donde alcanza F1 de 0.388 y 0.319 frente a valores que en los modelos lineales no superan 0.13, y en Reconnaissance, Shellcode y Generic, donde supera a la regresión logística por un margen de entre 0.10 y 0.22 puntos. Analysis y Backdoors permanecen por debajo de 0.26 en los tres modelos, mientras que Benign alcanza un F1 cercano a 0.99 en todos.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth,keepaspectratio]{output/resultados_fase3_heatmap_clases.png}
+\caption{Métricas por clase en prueba. El color y el valor principal representan F1; debajo se muestran precisión (P) y recall (R). La selección de configuraciones se basó en Macro F1 de validación.}
+\label{fig:f1_clases}
+\end{figure}
+
+\subsection{Análisis de errores e interpretación}
+
+Las Figs.~\ref{fig:confusion_rf}, \ref{fig:confusion_logreg} y \ref{fig:confusion_svm} presentan las matrices de confusión normalizadas de los tres modelos sobre el conjunto de prueba y permiten examinar sus errores por categoría.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth,keepaspectratio]{output/resultados_fase3_confusion_rf.png}
+\caption{Matriz de confusión normalizada de Random Forest.}
+\label{fig:confusion_rf}
+\end{figure}
+
+Random Forest concentra más predicciones en la diagonal para varias categorías. Sin embargo, \texttt{DoS} y \texttt{Worms} siguen siendo difíciles: solo clasifica correctamente el 26\,\% de los flujos de \texttt{DoS} y el 52\,\% de \texttt{Worms}, aunque supera ampliamente a los modelos lineales. Una parte importante de esos errores se asigna a \texttt{Exploits}, un patrón compatible con solapamiento entre las características de tráfico de esas clases.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth,keepaspectratio]{output/resultados_fase3_confusion_logreg.png}
+\caption{Matriz de confusión normalizada de la regresión logística.}
+\label{fig:confusion_logreg}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth,keepaspectratio]{output/resultados_fase3_confusion_svm.png}
+\caption{Matriz de confusión normalizada del SVM lineal.}
+\label{fig:confusion_svm}
+\end{figure}
+
+Los modelos lineales (regresión logística y SVM) presentan un patrón distinto. En \texttt{Shellcode}, ambos alcanzan mayor recall que Random Forest, pero menor precisión; por ello detectan más casos reales y también generan más falsos positivos. En las clases \texttt{Analysis} y \texttt{Backdoors}, los tres modelos muestran un rendimiento bajo y confusiones mutuas importantes: una proporción considerable de flujos reales de una categoría es asignada a la otra, además de dispersarse hacia \texttt{DoS} o \texttt{Exploits}.
+
+\section{Discusión y limitaciones}
+
+
+\subsection{Interpretación de los resultados}
+
+Con solo 44 flujos de prueba, cada acierto o fallo cambia el recall de Worms en 0.023, por lo que su F1 (0.32, 0.11 y 0.02) debe leerse con cautela.
+
+Random Forest tampoco es mejor en todo desde el punto de vista de seguridad: clasifica como \texttt{Benign} una fracción mayor de Analysis (16\,\%) y Fuzzers (7\,\%) que los modelos lineales, en los que esas celdas son prácticamente nulas.
+
+En relación con las preguntas de investigación, según el EDA, la capacidad discriminativa se concentra en \texttt{sttl} y \texttt{ct\_state\_ttl}; las familias más difíciles de distinguir son Analysis y Backdoors entre sí, y DoS y Worms respecto de Exploits; y el desbalance hace que la exactitud (0.951--0.965) oculte diferencias de hasta 0.157 en macro F1.
+
+
+\begin{table}[!h]
+\centering
+\caption{Desempeño por modelo en validación (media $\pm$ DE de cinco particiones) y prueba; $\Delta=$ validación $-$ prueba.}
+\label{tab:val_vs_prueba}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lccc@{}}
+\hline
+\textbf{Modelo} & \textbf{Validación} & \textbf{Prueba} & \textbf{$\Delta$} \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Exactitud}} \\
+Random Forest & $0.980\pm0.020$ & 0.965 & 0.015 \\
+Reg. logística & $0.977\pm0.023$ & 0.953 & 0.023 \\
+SVM lineal & $0.975\pm0.024$ & 0.951 & 0.024 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Precisión macro}} \\
+Random Forest & $0.681\pm0.180$ & 0.618 & 0.062 \\
+Reg. logística & $0.560\pm0.249$ & 0.450 & 0.111 \\
+SVM lineal & $0.542\pm0.257$ & 0.418 & 0.123 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Recall macro}} \\
+Random Forest & $0.769\pm0.130$ & 0.685 & 0.085 \\
+Reg. logística & $0.688\pm0.176$ & 0.598 & 0.090 \\
+SVM lineal & $0.639\pm0.204$ & 0.537 & 0.102 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Macro F1}} \\
+Random Forest & $0.694\pm0.171$ & 0.609 & 0.085 \\
+Reg. logística & $0.590\pm0.231$ & 0.490 & 0.100 \\
+SVM lineal & $0.564\pm0.246$ & 0.452 & 0.111 \\
+\hline
+\end{tabular}
+\end{table}
+\subsection{Limitaciones del dataset, metodología y resultados}
+
+Una primera limitación corresponde a la representatividad de UNSW-NB15, generado en un entorno controlado que combina tráfico normal y ataques sintéticos \cite{moustafa2015unsw}. La presencia de solo 43 direcciones IP de origen y 47 de destino refleja una diversidad limitada de hosts. Aunque estas variables fueron excluidas para evitar que los modelos memorizaran identificadores específicos, dicha medida no elimina las particularidades del entorno de captura. Por tanto, un buen desempeño sobre este conjunto no demuestra que los patrones aprendidos sean igualmente válidos en redes con diferentes topologías, dispositivos o comportamientos de tráfico.
+
+El desbalance de clases también condiciona la confiabilidad de los resultados. Después de la deduplicación, \texttt{Benign} representa más del 95\,\% de los registros, mientras que \texttt{Worms} conserva únicamente 171 observaciones. Zoghi y Serpen \cite{zoghi2024imbalance} identifican el desbalance y el solapamiento entre clases como dificultades relevantes en UNSW-NB15. Esto resulta pertinente para nuestro estudio, ya que los pesos de clase modifican la importancia de las observaciones durante el entrenamiento, pero no incrementan la cantidad de ejemplos disponibles ni eliminan necesariamente las similitudes entre categorías. Por tanto, aunque se incorporaron mecanismos de ponderación, no puede afirmarse que estos sean suficientes para resolver las dificultades de clasificación de las clases minoritarias.
+
+En cuanto al diseño experimental, la partición cronológica permitió reservar los registros más recientes para la prueba final. Sin embargo, la validación cruzada utilizó en algunas rondas observaciones posteriores al bloque evaluado, por lo que no reproduce completamente un escenario de predicción futura. Además, cada modelo seleccionó una configuración de preprocesamiento diferente y el entrenamiento durante la validación se limitó a un máximo de 100\,000 registros por clase. Estas decisiones permiten comparar las configuraciones completas, pero dificultan aislar cuánto del rendimiento observado se debe al algoritmo y cuánto al preprocesamiento utilizado. Una evaluación complementaria con un mismo esquema de preprocesamiento para todos los modelos y una validación temporal progresiva permitiría examinar ambos efectos.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\columnwidth]{output/resultados_fase2_folds.png}
+    \caption{Macro F1 por bloque temporal de validación para los tres modelos evaluados.}
+    \label{fig:macro_f1_folds}
+\end{figure}
+
+Finalmente, la validación cruzada temporal presentó una limitación relacionada con la distribución de clases entre particiones. Como se observa en la Fig.~\ref{fig:macro_f1_folds}, en el segundo bloque de validación (\texttt{r2}), compuesto por tráfico benigno, los tres modelos alcanzaron un macro F1 cercano a 1.00. Sin embargo, este resultado no representa una clasificación correcta de las diez categorías, ya que la implementación calcula el promedio únicamente sobre las clases con observaciones reales en cada bloque. En consecuencia, el desempeño de \texttt{r2} elevó las medias de validación reportadas en la Tabla~\ref{tab:val_vs_prueba}, contribuyendo a las diferencias observadas respecto al conjunto de prueba.
+
+Como análisis exploratorio, al excluir \texttt{r2} del cálculo de las medias, el macro F1 de los cuatro bloques restantes resulta aproximadamente 0.618 para Random Forest, 0.488 para regresión logística y 0.455 para SVM lineal. Estos valores son cercanos a los obtenidos en prueba (0.609, 0.490 y 0.452, respectivamente). Aunque este cálculo no constituye una nueva validación, evidencia que promediar métricas calculadas sobre bloques con distinta cobertura de clases puede producir una estimación poco representativa del desempeño multiclase. Una evaluación posterior debería analizar la composición de cada partición y emplear un procedimiento de evaluación que permita comparar de manera consistente el rendimiento sobre las categorías de interés.
+
+\subsection{Consideraciones éticas, sesgos y generalización}
+
+Desde una perspectiva ética y operativa, los errores de clasificación no tienen consecuencias equivalentes. Mientras que identificar tráfico benigno como malicioso puede generar alertas innecesarias y aumentar la carga de los analistas, clasificar un ataque como \texttt{Benign} puede ocasionar que una amenaza no reciba atención. Esta diferencia plantea una limitación en el criterio de evaluación, ya que el macro F1 asigna igual importancia a las diez categorías, pero no considera el costo específico de cada confusión. Por tanto, seleccionar un modelo únicamente por esta métrica no garantiza que sea la alternativa más adecuada para un sistema de seguridad. Una evaluación orientada al despliegue debería considerar también los errores entre tráfico malicioso y benigno y sus consecuencias operativas.
+
+El tratamiento del desbalance introduce otro compromiso. Los pesos de clase reducen el predominio de las categorías mayoritarias durante el aprendizaje y modifican el equilibrio entre detecciones y falsas alarmas. En los tres modelos, el recall macro superó a la precisión macro. Este patrón concuerda con el efecto esperado de la ponderación —mayor cobertura de las categorías minoritarias a costa de más predicciones positivas incorrectas—, aunque la comparación no aísla su efecto causal. Por ello, favorecer la detección de categorías minoritarias no implica necesariamente una mejora en todas las condiciones de uso, pues un aumento de falsas alarmas también puede reducir la utilidad operativa del sistema. La selección del modelo debería considerar estos costos y las necesidades del entorno donde se utilizaría.
+
+Finalmente, los clasificadores desarrollados operan sobre diez categorías conocidas durante el entrenamiento. Sin embargo, una red real puede presentar comportamientos y ataques no representados en UNSW-NB15. Al no incorporar un mecanismo específico para reconocer categorías desconocidas, los modelos evaluados asignarían sus predicciones a alguna de las clases conocidas, sin garantizar una identificación adecuada de nuevas amenazas. Esta limitación plantea la necesidad de evaluar mecanismos de detección de comportamientos desconocidos y validar el sistema con tráfico externo. Asimismo, una implementación real debería contemplar la protección de los datos de red, la supervisión humana y el monitoreo continuo del desempeño antes de utilizar sus predicciones para adoptar medidas de seguridad.
+
+
+\section{Conclusiones}
+
+Este trabajo comparó una regresión logística multinomial (\textit{baseline}), un SVM lineal y Random Forest en la clasificación de los flujos de UNSW-NB15 en diez categorías, bajo un protocolo que evitó la fuga de información mediante la deduplicación previa a la partición, la exclusión de identificadores y marcas de tiempo, y una partición cronológica. Random Forest obtuvo el mejor desempeño en las cuatro métricas sobre los 304\,499 flujos de prueba, con una exactitud de 0.965 y un macro F1 de 0.609, frente a 0.490 de la regresión logística y 0.452 del SVM. En respuesta a la pregunta principal, las características del tráfico permiten identificar con claridad el tráfico \texttt{Benign} (F1 cercano a 0.99 en los tres modelos) y varias familias de ataque (\texttt{Generic}, \texttt{Exploits}, \texttt{Reconnaissance} y \texttt{Shellcode}, con F1 entre 0.80 y 0.91 en Random Forest), pero no bastan para distinguir de forma confiable las demás.
+
+Respecto a las variables más asociadas con \texttt{attack\_cat}, el análisis exploratorio obtuvo los mayores valores de $\eta^2$ para \texttt{sttl} (0.835) y \texttt{ct\_state\_ttl} (0.777); para esta última, $\eta^2$ descendió a 0.50 al eliminar los duplicados. La configuración seleccionada para Random Forest excluyó las variables \texttt{ct\_*}. Como no se calculó la importancia de variables sobre los modelos entrenados, esta pregunta se responde solo con evidencia exploratoria.
+
+Sí existen categorías difíciles de distinguir. Las matrices de confusión muestran una confusión mutua entre \texttt{Analysis} y \texttt{Backdoors}, cuyo F1 no superó 0.26 en ningún modelo, y un error sistemático de \texttt{DoS} y \texttt{Worms} hacia \texttt{Exploits}. Random Forest redujo esta dificultad en \texttt{DoS} y \texttt{Worms} (F1 de 0.388 y 0.319, frente a valores inferiores a 0.13 en los modelos lineales), pero no la eliminó. La ventaja de Random Forest fue especialmente marcada en \texttt{DoS} y \texttt{Worms}; en \texttt{Shellcode}, en cambio, los modelos lineales lo superaron en recall a costa de más falsos positivos.
+
+El desbalance de clases condicionó tanto el desempeño como su medición. Tras la deduplicación, \texttt{Benign} representa más del 95\,\% de los registros y \texttt{Worms} conserva 171, por lo que la exactitud varió poco entre modelos (0.951--0.965) mientras que el macro F1 difirió hasta en 0.157. En los modelos ponderados, el recall macro superó a la precisión macro, patrón coherente con el objetivo de favorecer la cobertura de clases minoritarias; esto no resolvió la escasez de ejemplos. A ello se suma que el bloque \texttt{r2}, compuesto por tráfico benigno, inflaba las medias de validación; al excluirlo, el macro F1 medio (0.618, 0.488 y 0.455) resulta cercano al observado en prueba. En consecuencia, en un problema con este desbalance, la exactitud no es una métrica suficiente y la forma de agregar el macro F1 entre particiones influye en las conclusiones.
+
+Estos resultados están acotados por el carácter controlado y sintético del dataset, el uso de un preprocesamiento distinto para cada modelo y una validación cruzada que no reproduce por completo un escenario de predicción futura. Como trabajo futuro se propone comparar los modelos bajo un mismo preprocesamiento y con una validación temporal progresiva, estimar la importancia de variables sobre los modelos entrenados, explorar técnicas específicas para las clases minoritarias y validar los modelos con tráfico de otras redes, incorporando mecanismos para detectar categorías desconocidas.
 \begin{thebibliography}{00}
+\bibitem{kasongo2020}
+S. M. Kasongo and Y. Sun,
+``Performance Analysis of Intrusion Detection Systems Using a Feature Selection Method on the UNSW-NB15 Dataset,''
+\textit{Journal of Big Data}, vol. 7, Art. 105, 2020,
+doi: 10.1186/s40537-020-00379-6.
+
+\bibitem{ahmad2021}
+M. Ahmad et al.,
+``Intrusion detection in internet of things using supervised machine learning based on application and transport layer features using UNSW-NB15 data-set,''
+\textit{EURASIP Journal on Wireless Communications and Networking}, vol. 2021, Art. 10, 2021,
+doi: 10.1186/s13638-021-01893-8.
+
+\bibitem{hussein2021}
+S. A. Hussein, A. A. Mahmood, and E. O. Oraby,
+``Network Intrusion Detection System Using Ensemble Learning Approaches,''
+\textit{Webology}, vol. 18, special issue 5, pp. 962--974, 2021,
+doi: 10.14704/WEB/V18SI05/WEB18274.
+
+\bibitem{breiman2001}
+L. Breiman,
+``Random Forests,''
+\textit{Machine Learning}, vol. 45, pp. 5--32, 2001,
+doi: 10.1023/A:1010933404324.
+
 \bibitem{kaggle_unsw}
 H. Bhangale,
 ``UNSW Complete Dataset,''
@@ -729,7 +666,7 @@ vol. 6, no. 4, pp. 1--21, 2012.
 F. A. Lanche Pacsi et al.,
 ``ml-project,''
 GitHub, 2026. [Online]. Available:
-\url{https://github.com/FabricioLanche/ml-project}
+\url{https://github.com/FabricioLanche/ml-project.git}
 
 \bibitem{mehrabi2021survey}
 N. Mehrabi, F. Morstatter, N. Saxena, K. Lerman, and A. Galstyan,
@@ -754,6 +691,15 @@ N. Moustafa and J. Slay,
 ``The evaluation of Network Anomaly Detection Systems: Statistical analysis of the UNSW-NB15 data set and the comparison with the KDD99 data set,''
 \textit{Information Security Journal: A Global Perspective},
 vol. 25, no. 1--3, pp. 18--31, 2016.
+
+
+\bibitem{zoghi2024imbalance}
+Z. Zoghi and G. Serpen,
+``Building an intrusion detection system on UNSW-NB15:
+Reducing the margin of error to deal with data overlap and imbalance,''
+\textit{Concurrency and Computation: Practice and Experience},
+vol. 36, no. 25, Art. e8242, 2024,
+doi: 10.1002/cpe.8242.
 
 \end{thebibliography}
 \end{document}

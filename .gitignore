@@ -1,8 +1,15 @@
 .agents/
 .example-datasets/
 **/raw/UNSW*
-results/
+**/checkpoints
+**/_inputs
+**/predicciones.parquet
+**/cont.tex
+src/benchmark-local.py
+dataset/
+$tmp/
 .venv/
+.smoke_kfold
 data/preprocessed
 main.tex
 __pycache__/

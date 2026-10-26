@@ -112,7 +112,7 @@ El objetivo principal del proyecto es predecir y clasificar el tráfico de red c
 
 \section{Datos y Análisis Exploratorio de Datos (EDA)}
 
-Esta sección presenta el análisis exploratorio del proyecto. Los scripts y el código necesarios para reproducir el análisis se encuentran disponibles en el repositorio del proyecto \cite{repo}.
+Esta sección presenta el análisis exploratorio del proyecto. Los scripts y el código necesarios para reproducir el análisis se encuentran disponibles en el repositorio del proyecto \cite{repo}: \url{https://github.com/FabricioLanche/ml-project.git}.
 
 \subsection{Descripción del dataset}
 
@@ -222,7 +222,7 @@ como \texttt{proto}, \texttt{state} y \texttt{service})
 falta de un formato estándar entre variables numéricas y nominales 
 constituye un desafío recurrente para las técnicas de detección de 
 intrusiones basadas en aprendizaje automático 
-\cite{moustafa2016evaluation}. Este dataset esta compuesto por 41 variables 
+\cite{moustafa2016evaluation}. Este dataset esta compuesto por 40 variables
 numéricas y un subconjunto de variables nominales de alta 
 cardinalidad (\texttt{srcip}, \texttt{dstip}, \texttt{sport}, 
 \texttt{dsport}) además de las de baja cardinalidad mencionadas 
@@ -280,7 +280,7 @@ Los nulos restantes en \texttt{sport} (8), \texttt{dsport} (304) y \texttt{state
 
 La variable objetivo \texttt{attack\_cat} define una tarea de clasificación multiclase con 10 categorías: las 9 familias de ataque de UNSW-NB15 más la clase artificial \texttt{Benign}, que agrupa el tráfico de red normal sin etiqueta de ataque específica (identificado con \texttt{Label} = 0).
 
-La Tabla~\ref{tab:descriptivos} resume los estadísticos descriptivos de una selección de variables representativas por grupo funcional, de acuerdo con la Tabla~\ref{tab:grupos_variables}, e incluye tanto variables con distribuciones extremas como variables de contraste. Muchas exhiben asimetrías pronunciadas, con medias sustancialmente superiores a sus medianas, por ejemplo \texttt{Sjit} (1{,}589 frente a 19.12) o \texttt{Sintpkt} (193.32 frente a 0.47); otras presentan alta varianza en magnitudes muy dispares, como \texttt{sbytes} y \texttt{sport}. Estas distribuciones sesgadas resultan típicas del tráfico de red y confirman la necesidad de normalización durante el preprocesamiento. El detalle completo de las 41 variables numéricas está disponible en el repositorio del proyecto (\texttt{output/descriptivos.csv}).
+La Tabla~\ref{tab:descriptivos} resume los estadísticos descriptivos de una selección de variables representativas por grupo funcional, de acuerdo con la Tabla~\ref{tab:grupos_variables}, e incluye tanto variables con distribuciones extremas como variables de contraste. Muchas exhiben asimetrías pronunciadas, con medias sustancialmente superiores a sus medianas, por ejemplo \texttt{Sjit} (1{,}589 frente a 19.12) o \texttt{Sintpkt} (193.32 frente a 0.47); otras presentan alta varianza en magnitudes muy dispares, como \texttt{sbytes} y \texttt{sport}. Estas distribuciones sesgadas resultan típicas del tráfico de red y confirman la necesidad de normalización durante el preprocesamiento. El detalle completo de las 40 variables numéricas está disponible en el repositorio del proyecto (\texttt{data/eda/tablas/descriptivos.csv}).
 
 \begin{table}[h!]
 \centering
@@ -544,7 +544,7 @@ vol. 6, no. 4, pp. 1--21, 2012.
 F. A. Lanche Pacsi et al.,
 ``ml-project,''
 GitHub, 2026. [Online]. Available:
-\url{https://github.com/FabricioLanche/ml-project}
+\url{https://github.com/FabricioLanche/ml-project.git}
 
 \bibitem{mehrabi2021survey}
 N. Mehrabi, F. Morstatter, N. Saxena, K. Lerman, and A. Galstyan,
