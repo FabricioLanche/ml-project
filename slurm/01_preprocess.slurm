@@ -21,8 +21,6 @@ set -Eeuo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
-MODIN_MEMORY="${MODIN_MEMORY:-51539607552}"
-export MODIN_MEMORY
 
 cd "$PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
