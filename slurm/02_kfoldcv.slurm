@@ -10,8 +10,9 @@
 #SBATCH --partition=standard
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
 # La cuenta de pregrado permite hasta 32 cores, 98 GB y 8 horas por job.
+# Se solicitan 32 cores para que Spark local[*] use el nodo completo.
+#SBATCH --cpus-per-task=32
 # Se solicita margen bajo el límite de memoria.
 #SBATCH --mem=96G
 #SBATCH --time=08:00:00
@@ -23,10 +24,10 @@ set -Eeuo pipefail
 PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 ITERACIONES="${ITERACIONES:-1}"
-SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-32}"
+SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
 # Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
 # al proceso Python y al overhead de Spark.
-DRIVER_MEMORY="${DRIVER_MEMORY:-80g}"
+DRIVER_MEMORY="${DRIVER_MEMORY:-72g}"
 
 cd "$PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
@@ -39,7 +40,7 @@ if ! command -v conda >/dev/null 2>&1; then
     export PATH="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}/bin:$PATH"
 fi
 if ! command -v conda >/dev/null 2>&1; then
-    echo "ERROR: no se encontró conda. Ejecute preparar_entorno.sh primero." >&2
+    echo "ERROR: no se encontró conda. Ejecute setup.sh primero." >&2
     exit 1
 fi
 
@@ -61,7 +62,7 @@ echo "Iniciando k-fold CV en $(hostname)"
 echo "Iteraciones: $ITERACIONES"
 echo "Driver memory: $DRIVER_MEMORY"
 
-srun --ntasks=1 python notebooks/k-foldCV.py \
+srun --ntasks=1 python -u notebooks/k-foldCV.py \
     --iteraciones "$ITERACIONES" \
     --driver-memory "$DRIVER_MEMORY" \
     --shuffle-partitions "$SHUFFLE_PARTITIONS"

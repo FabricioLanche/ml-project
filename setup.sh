@@ -1,11 +1,11 @@
 #!/bin/bash
-# Crea o actualiza el entorno Conda del proyecto en el nodo de acceso de Khipu.
-# Uso: bash slurm/preparar_entorno.sh
+# Prepara el entorno Conda y descarga el dataset si todavía no está disponible.
+# Uso desde el nodo de acceso: bash setup.sh
 
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="${PROJECT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+PROJECT_DIR="${PROJECT_DIR:-$SCRIPT_DIR}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-$PROJECT_DIR/requirements.txt}"
 CONDA_INSTALL_DIR="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}"
@@ -144,4 +144,59 @@ print("pyarrow:", pyarrow.__version__)
 print("pyspark:", pyspark.__version__)
 PY
 
+DATA_DIR="$PROJECT_DIR/data/raw"
+KAGGLE_DATASET="${KAGGLE_DATASET:-harshwardhanbhangale/unsw-complete-dataset}"
+mkdir -p "$DATA_DIR"
+
+required_files=()
+for index in 1 2 3 4; do
+    required_files+=("UNSW-NB15_${index}.csv")
+done
+
+missing=0
+for file in "${required_files[@]}"; do
+    if [[ ! -f "$DATA_DIR/$file" ]]; then
+        missing=1
+        break
+    fi
+done
+
+if [[ "$missing" -eq 0 ]]; then
+    echo "Dataset ya presente en '$DATA_DIR'."
+else
+    echo "Descargando '$KAGGLE_DATASET' desde el nodo de acceso..."
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/unsw-kaggle.XXXXXX")"
+    cleanup() {
+        rm -rf "$download_dir"
+    }
+    trap cleanup EXIT
+
+    DATA_DIR="$DATA_DIR" KAGGLE_DATASET="$KAGGLE_DATASET" \
+    python -c '
+import os
+import shutil
+from pathlib import Path
+
+import kagglehub
+
+source_dir = Path(kagglehub.dataset_download(os.environ["KAGGLE_DATASET"]))
+target_dir = Path(os.environ["DATA_DIR"])
+for index in range(1, 5):
+    name = f"UNSW-NB15_{index}.csv"
+    source = source_dir / name
+    if not source.is_file():
+        raise FileNotFoundError(f"No se encontró {name} en {source_dir}")
+    shutil.copy2(source, target_dir / name)
+    print(f"  -> {target_dir / name}")
+'
+fi
+
+for file in "${required_files[@]}"; do
+    if [[ ! -f "$DATA_DIR/$file" ]]; then
+        echo "ERROR: falta el archivo esperado tras la preparación: $DATA_DIR/$file" >&2
+        exit 1
+    fi
+done
+
 echo "Entorno '$CONDA_ENV' preparado correctamente."
+echo "Dataset disponible en '$DATA_DIR'."

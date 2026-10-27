@@ -79,22 +79,30 @@ def _rondas(celda_dir: Path):
     return rondas
 
 
-def _evaluar_config(spark, rondas, modelo, params, destino, escala):
+def _cargar_celda_features(spark, rondas, escala):
+    """Carga y persiste una celda completa, liberándola al terminar el bloque."""
+    return [train.preparar_fold_features(spark, ronda, escala) for ronda in rondas]
+
+
+def _liberar_celda_features(folds):
+    for fold in folds:
+        fold.liberar()
+
+
+def _evaluar_config(folds, modelo, params, escala, *,
+                    celda, reutilizado=False, hiperparametro=None):
     filas = []
-    for ronda in rondas:
-        etiqueta = f"{ronda.parent.name}/{ronda.name}"
+    for indice, fold in enumerate(folds, start=1):
+        etiqueta = f"{celda}/r{indice}"
         print(f"  >>> {modelo} {etiqueta} params={params}")
-        train_df = common.cargar_parquet(spark, ronda / "train.parquet")
-        val_df = common.cargar_parquet(spark, ronda / "val.parquet")
-        metricas = train.correr_ronda(
-            train_df, val_df, modelo, params, escala,
-            destino / ronda.name,
-        )
+        metricas = train.evaluar_features(fold, modelo, params, escala)
         filas.append({
             "modelo": modelo,
-            "celda": ronda.parent.name,
-            "ronda": ronda.name,
+            "celda": celda,
+            "ronda": f"r{indice}",
             "params": json.dumps(params, sort_keys=True),
+            "hiperparametro": hiperparametro or "",
+            "reutilizado_fase_1": reutilizado,
             **metricas,
         })
     return filas
@@ -132,48 +140,79 @@ def _orden_seleccion(fila):
 
 def _fase1(spark, grid, modelos, params_base, destino, escala):
     filas_fold, resumentes = [], []
-    for modelo in modelos:
-        for celda in sorted(p for p in grid.glob("G*") if p.is_dir()):
-            rondas = _rondas(celda)
-            parciales = _evaluar_config(
-                spark, rondas, modelo, params_base[modelo],
-                destino / celda.name / modelo, escala,
-            )
-            filas_fold.extend(parciales)
-            resumen = _resumen(parciales)
-            resumentes.append({
-                "modelo": modelo, "celda": celda.name,
-                "params": json.dumps(params_base[modelo], sort_keys=True),
-                **resumen,
-            })
-    _escribir_csv(destino / "resultados_por_fold.csv", filas_fold)
-    _escribir_csv(destino / "resumen_configuraciones.csv", resumentes)
+    for celda in sorted(p for p in grid.glob("G*") if p.is_dir()):
+        print(f"\n=== CELDA {celda.name}: cargando cinco folds ===")
+        folds = _cargar_celda_features(spark, _rondas(celda), escala)
+        try:
+            for modelo in modelos:
+                parciales = _evaluar_config(
+                    folds, modelo, params_base[modelo], escala, celda=celda.name,
+                )
+                filas_fold.extend(parciales)
+                resumentes.append({
+                    "modelo": modelo, "celda": celda.name,
+                    "params": json.dumps(params_base[modelo], sort_keys=True),
+                    "reutilizado_fase_1": False,
+                    **_resumen(parciales),
+                })
+        finally:
+            _liberar_celda_features(folds)
+    _escribir_csv(destino / "resultado_por_fold.csv", filas_fold)
+    _escribir_csv(destino / "resumen_general.csv", resumentes)
     return {
         modelo: max((r for r in resumentes if r["modelo"] == modelo),
                     key=_orden_seleccion)
         for modelo in modelos
-    }
+    }, filas_fold
 
 
-def _fase2(spark, grid, modelos, ganadores, params_grid, destino, escala):
+def _fase2(spark, grid, modelos, ganadores, fase1_filas, params_grid, destino, escala):
     filas_fold, resumentes = [], []
     for modelo in modelos:
         celda = grid / ganadores[modelo]["celda"]
-        configuraciones = list(params_grid[modelo])
-        for indice, params in enumerate(configuraciones, start=1):
-            parciales = _evaluar_config(
-                spark, _rondas(celda), modelo, params,
-                destino / modelo / f"hiperparametro_{indice}", escala,
-            )
-            filas_fold.extend(parciales)
-            resumentes.append({
-                "modelo": modelo, "celda": celda.name,
-                "hiperparametro": f"hiperparametro_{indice}",
-                "params": json.dumps(params, sort_keys=True),
-                **_resumen(parciales),
-            })
-    _escribir_csv(destino / "resultados_por_fold.csv", filas_fold)
-    _escribir_csv(destino / "resumen_configuraciones.csv", resumentes)
+        params_base = json.loads(ganadores[modelo]["params"])
+        base_key = json.dumps(params_base, sort_keys=True)
+        base_rows = [
+            {**fila, "hiperparametro": "hiperparametro_0",
+             "reutilizado_fase_1": True}
+            for fila in fase1_filas
+            if fila["modelo"] == modelo
+            and fila["celda"] == celda.name
+            and fila["params"] == base_key
+        ]
+        filas_fold.extend(base_rows)
+        resumentes.append({
+            "modelo": modelo, "celda": celda.name,
+            "hiperparametro": "hiperparametro_0",
+            "params": base_key,
+            "reutilizado_fase_1": True,
+            **_resumen(base_rows),
+        })
+
+        configuraciones = [
+            params for params in params_grid[modelo]
+            if json.dumps(params, sort_keys=True) != base_key
+        ]
+        folds = _cargar_celda_features(spark, _rondas(celda), escala)
+        try:
+            for indice, params in enumerate(configuraciones, start=1):
+                etiqueta = f"hiperparametro_{indice}"
+                parciales = _evaluar_config(
+                    folds, modelo, params, escala, celda=celda.name,
+                    hiperparametro=etiqueta,
+                )
+                filas_fold.extend(parciales)
+                resumentes.append({
+                    "modelo": modelo, "celda": celda.name,
+                    "hiperparametro": etiqueta,
+                    "params": json.dumps(params, sort_keys=True),
+                    "reutilizado_fase_1": False,
+                    **_resumen(parciales),
+                })
+        finally:
+            _liberar_celda_features(folds)
+    _escribir_csv(destino / "resultado_por_fold.csv", filas_fold)
+    _escribir_csv(destino / "resumen_general.csv", resumentes)
     return {
         modelo: max((r for r in resumentes if r["modelo"] == modelo),
                     key=_orden_seleccion)
@@ -217,8 +256,8 @@ def _materializar_final(base, celda, destino):
     destino.mkdir(parents=True, exist_ok=True)
     train_path = destino / "train.parquet"
     test_path = destino / "test.parquet"
-    train_t.to_parquet(train_path, index=False, compression="snappy")
-    test_t.to_parquet(test_path, index=False, compression="snappy")
+    pre.escribir_parquet_spark(train_t, train_path)
+    pre.escribir_parquet_spark(test_t, test_path)
     return train_path, test_path
 
 
@@ -241,7 +280,7 @@ def main(argv=None):
         for iteracion in range(1, args.iteraciones + 1):
             raiz = args.out / f"iteracion_{iteracion}"
             print(f"\n=== ITERACION {iteracion}/{args.iteraciones}: FASE 1 ===")
-            fase1 = _fase1(
+            fase1, fase1_filas = _fase1(
                 spark, args.grid, args.modelos, params_fase1,
                 raiz / "fase_1", escala,
             )
@@ -250,7 +289,7 @@ def main(argv=None):
             )
             print(f"\n=== ITERACION {iteracion}/{args.iteraciones}: FASE 2 ===")
             ganadores = _fase2(
-                spark, args.grid, args.modelos, fase1, params_grid,
+                spark, args.grid, args.modelos, fase1, fase1_filas, params_grid,
                 raiz / "fase_2", escala,
             )
             (raiz / "fase_2" / "ganadores.json").write_text(

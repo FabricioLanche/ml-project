@@ -113,11 +113,10 @@ nodo con salida a Internet; los jobs de cómputo únicamente activan el entorno.
 
 ```bash
 cd /ruta/al/ml-project
-bash slurm/preparar_entorno.sh
-bash slurm/descargar_dataset.sh
+bash setup.sh
 ```
 
-El script inicializa `LD_PRELOAD` antes de cargar Lmod porque la configuración de
+El script `setup.sh` inicializa `LD_PRELOAD` antes de cargar Lmod porque la configuración de
 Khipu puede referenciar esa variable aun cuando no esté definida en la sesión.
 También verifica que `miniconda/3.0` haya puesto `conda` en el `PATH`; si el módulo
 no está disponible, descarga e instala Miniforge automáticamente en
@@ -135,12 +134,16 @@ de entorno o una ruta distinta al proyecto:
 
 ```bash
 CONDA_ENV=mi-entorno PROJECT_DIR=/ruta/al/ml-project \
-  bash /ruta/al/ml-project/slurm/preparar_entorno.sh
+  bash /ruta/al/ml-project/setup.sh
 ```
 
 El script deja Java 17 o superior disponible dentro del entorno. Falla explícitamente si no
 puede encontrar o instalar una versión compatible, si falta el archivo de dependencias o si
 alguno de los paquetes requeridos no puede importarse.
+
+Al finalizar la preparación, `setup.sh` verifica `data/raw/` y descarga automáticamente los
+cuatro CSV del dataset desde Kaggle si alguno falta. La descarga debe ejecutarse en el nodo
+de acceso, que tiene salida a Internet; si los archivos ya existen, no vuelve a descargarlos.
 
 Primero compruebe el entorno en la partición de depuración:
 
@@ -149,10 +152,7 @@ cd /ruta/al/ml-project
 CONDA_ENV=ml-unsw sbatch --partition=debug slurm/00_verificar_entorno.slurm
 ```
 
-La descarga debe hacerse en el nodo de acceso, que tiene salida a Internet. No debe
-dejarse a `01_preprocess.slurm`, porque los nodos de cómputo no pueden acceder a
-`api.kaggle.com`. El script es idempotente: si los cuatro CSV ya están en `data/raw/`,
-no vuelve a descargarlos. Después ejecute los jobs en orden; el segundo debe terminar
+Después ejecute los jobs en orden; el segundo debe terminar
 antes de enviar el tercero:
 
 ```bash
@@ -174,12 +174,19 @@ cat slurm-<jobid>-kfold.out
 ```
 
 Los valores de partición, memoria, tiempo y CPU están declarados en los encabezados
-`#SBATCH`. Para la cuenta de pregrado de Khipu se usa `standard`, con 16 cores, 96 GB
-de RAM y 8 horas por job, dentro de los límites de 32 cores, 98 GB y 8 horas. Si el
+`#SBATCH`. Para la cuenta de pregrado de Khipu se usa `standard`, con 32 cores, 96 GB
+de RAM y 8 horas por job, dentro de los límites de 32 cores, 98 GB y 8 horas. Spark
+se ejecuta con `local[*]`, por lo que puede utilizar los 32 cores reservados; la salida
+Python usa modo sin búfer para mostrar el avance en el log. Si el
 entrenamiento completo necesita más tiempo, debe dividirse en ejecuciones o solicitar una
 cuenta/QoS autorizada con un límite mayor; no conviene pedir recursos superiores a los
 permitidos, porque el job quedará pendiente. Los scripts fallan explícitamente si falta el
 entorno, el dataset o la salida del preprocesamiento anterior.
+
+Para una prueba corta de recursos y persistencia se puede usar el benchmark de
+`slurm/test/`, que limita filas y ejecuta una sola celda y un solo fold. No reemplaza
+la ejecución completa, pero permite comparar configuraciones sin comprometer un job de
+ocho horas.
 
 ## Dataset
 

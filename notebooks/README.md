@@ -1,6 +1,6 @@
 # Modelado con MLlib (P2): interfaz del motor para la capa de validación cruzada
 
-Este documento describe la interfaz de `train.py`, `common.py` y `cli.py` para quien construya la
+Este documento describe la interfaz de `train.py` y `common.py` para quien construya la
 capa de validación cruzada y comparación de modelos por encima del motor. Todo lo que
 sigue corresponde al código tal como está en el repo; si se cambia una firma, este
 documento se actualiza en el mismo commit.
@@ -9,10 +9,8 @@ documento se actualiza en el mismo commit.
 
 - `common.py`: pipeline MLlib compartido (features, clasificadores, evaluación, E/S).
   No importa `train.py` ni depende de `argparse`.
-- `train.py`: motor de corridas (`construir_spark`, `correr_ronda`, `correr_suelto`,
-  `correr_grid`, `correr_final`). Importable como biblioteca; no parsea argumentos de terminal.
-- `cli.py`: adaptador de terminal. Parsea argumentos, llama al motor y vuelca el
-  resumen `<out>/metricas.csv`. No entrena ni evalúa nada por su cuenta.
+- `train.py`: motor del pipeline activo (`construir_spark`, `preparar_fold_features`,
+  `evaluar_features`, `correr_final`). Importable como biblioteca.
 - `k-foldCV.py`: orquestador de punta a punta. Ejecuta la comparación de celdas,
   la búsqueda de hiperparámetros de cada modelo y, al terminar las iteraciones,
   el reentrenamiento final contra `base/test.parquet`.
@@ -21,9 +19,8 @@ documento se actualiza en el mismo commit.
 
 - No agrega ni promedia métricas entre rondas: devuelve una fila por corrida y quien
   llama decide cómo promediar/comparar.
-- No escribe el `metricas.csv` cuando se usa como biblioteca: eso solo lo hace el
-  adaptador (`cli.py`). Desde código, el llamador arma su propio CSV con el esquema de
-  la sección *Esquema de salidas*.
+- Las fases 1 y 2 escriben sus propios CSV desde `k-foldCV.py`, con el esquema descrito
+  en la documentación del orquestador.
 - No crea ni destruye sesiones de Spark: ver *Reglas de composición*.
 
 ## Orquestador de k-fold
@@ -68,7 +65,7 @@ las métricas por clase y las matrices de confusión.
 
 Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en WARN).
 **El llamador es dueño de la sesión**: debe ejecutar `spark.stop()` en un bloque
-`finally`. Ninguna función `correr_*` la detiene.
+`finally`. El motor no detiene la sesión que recibe.
 
 | Parámetro | Tipo | Notas |
 |---|---|---|
@@ -77,46 +74,14 @@ Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en
 | `shuffle_partitions` | `int` | default `32`; el default de Spark (200) es excesivo en un solo nodo |
 | `app_name` | `str` | solo identificación en la UI de Spark |
 
-### `correr_ronda(train_df, val_df, arma, params, escala, destino) -> dict[str, float]`
-
-**Unidad granular de trabajo.** Fitea el pipeline en `train_df`, predice `val_df`,
-persiste tres artefactos en `destino` (crea el directorio si no existe) y devuelve las
-métricas en un dict `{accuracy, promedio_precision, promedio_recall, promedio_F1}` (ver *Métricas de
-una ronda*).
-
-| Argumento | Qué recibe |
-|---|---|
-| `train_df`, `val_df` | DataFrames **ya pasados por `common.cargar_parquet`** (sanea nombres de columnas y castea booleanos). Un DataFrame crudo de `spark.read.parquet` puede fallar en `VectorAssembler` |
-| `arma` | `"logreg"`, `"rf"` o `"svm"` (constante `common.ALGOS`) |
-| `params` | dict de hiperparámetros que se superponen a los default (`{}` = default) |
-| `escala` | `bool`; `True` aplica `StandardScaler` antes del clasificador |
-| `destino` | `Path` de salida; escribe `predicciones.parquet`, `modelo/`, `metricas.json` |
-
-### `correr_suelto(spark, entrada, *, val=None, fraccion_val=0.2, semilla=42, arma, params, escala=True, out="results", limite=None) -> list[dict]`
-
-Entrena sobre un parquet suelto. Si `val` falta, parte `entrada` con
-`randomSplit([1 - fraccion_val, fraccion_val], seed=semilla)`. `limite` reparte el
-tope entre las clases del archivo (hasta `limite // n_clases` filas por clase), de
-modo que ninguna clase quede sin ejemplos — **solo para pruebas de humo**, nunca para
-resultados finales. Escribe en `<out>/suelto/<arma>/` y devuelve una fila
-`{"celda": "suelto", "ronda": "-1", "arma": ..., **metricas}`.
-
-### `correr_grid(spark, grid, *, arma, params, escala=True, out="results", limite=None) -> list[dict]`
-
-Recorre `<grid>/<celda>/r<k>/{train,val}.parquet` (celdas `G*` ordenadas alfabéticamente,
-dentro de cada una las rondas `r*` en orden) y llama `correr_ronda` por cada par
-celda×ronda. Escribe en `<out>/<celda>/<arma>/r<k>/`. Devuelve una fila por par
-`{"celda": ..., "ronda": ..., "arma": ..., **metricas}`. Lanza `SystemExit` si el
-directorio no contiene celdas `G*`.
-
 ## Reglas de composición
 
 1. **Sesión**: quien llama crea (`construir_spark`) y destruye (`spark.stop()`) la
-   sesión. Las funciones `correr_*` reciben el `spark` como primer argumento y lo usan,
+   sesión. Las funciones del motor reciben el `spark` como primer argumento y lo usan,
    no lo gestionan.
-2. **DataFrames de entrada**: pasar siempre por `common.cargar_parquet(spark, ruta)`
-   (aplica `sanear_columnas` — espacios/guiones → guion bajo, porque el diccionario de
-   UNSW-NB15 trae `ct_src_ ltm` — y `preparar`, que castea booleanos a `double`).
+2. **DataFrames de entrada**: `common.cargar_parquet(spark, ruta)` lee directamente
+   los Parquet materializados por `pre-process.py`. Ese paso ya persiste los nombres
+   normalizados y las columnas booleanas como valores numéricos compatibles con Spark ML.
 3. **`label` ya viene indexado** (entero 0–9) desde `pre-process.py`; el mapeo índice →
    nombre de clase vive en `data/preprocessed/base/metadatos.json`. Por eso el pipeline
    NO incluye un `StringIndexer` de objetivo.
@@ -124,12 +89,11 @@ directorio no contiene celdas `G*`.
    features (constante `common.CONTROL`).
 5. **Sin fugas de datos**: el one-hot y el `StandardScaler` se fitean *dentro* del
    pipeline, por fold. No fitear ningún transformador antes del split de la ronda.
-6. **Agregación y CSV**: el motor devuelve listas de filas; promediar por celda,
-   comparar armas y escribir el `metricas.csv` agregado es responsabilidad de la capa
-   de CV. Esquema de columnas: `celda, ronda, arma` + `common.METRICAS`.
-7. **La sesión de cada ronda es la misma**: `correr_grid` reutiliza el `spark`
-   recibido en todo el recorrido; no hace falta (ni está soportado) recrear la sesión
-   por ronda.
+6. **Agregación y CSV**: `k-foldCV.py` calcula los resúmenes por celda y escribe
+   `resultado_por_fold.csv` y `resumen_general.csv` para cada fase.
+7. **Features compartidas por fold**: `preparar_fold_features` ajusta las
+   transformaciones una sola vez por fold; `evaluar_features` reutiliza esas
+   features para cada modelo e hiperparámetro.
 
 ## Algoritmos e hiperparámetros
 
@@ -175,15 +139,14 @@ Para cada fold, `construir_pipeline` arma, en orden:
 3. Si `escala`: `StandardScaler(withMean=False, withStd=True)` → `features`.
 4. El clasificador de la sección anterior.
 
-`common.separar_features` separa categóricas/numéricas por el esquema de Spark después
-de `preparar`; no hay lista fija de columnas — el esquema del parquet manda.
+`common.separar_features` separa categóricas/numéricas según el esquema persistido;
+no hay lista fija de columnas — el esquema del parquet manda.
 
 ## Esquema de salidas
 
 ```
 <out>/
-├── metricas.csv                        # solo lo escribe cli.py; header: celda,ronda,algo,accuracy,promedio_precision,promedio_recall,promedio_F1
-└── <celda>/<arma>/r<k>/
+└── fase_3/<modelo>/
     ├── modelo/                         # PipelineModel nativo de Spark (recargable)
     ├── predicciones.parquet            # label, attack_cat, es_duplicado?, prediction, probability|raw_prediction
     ├── metricas.json                   # resumen de la ronda
@@ -191,8 +154,6 @@ de `preparar`; no hay lista fija de columnas — el esquema del parquet manda.
     ├── matriz_confusion.csv
     └── matriz_confusion_normalizada.csv
 ```
-
-En `correr_suelto`, `<celda>` es literalmente `suelto` y `r<k>` es `-1`.
 
 `predicciones.parquet`: `probability` (logreg/rf) es un **array** de 10 elementos con la
 probabilidad por clase; en `svm` se guarda `raw_prediction` (márgenes del OneVsRest)
@@ -222,12 +183,3 @@ metricas = common.evaluar(pred)
   clonar/copiar la rejilla) antes de una corrida completa.
 - En Windows, PySpark local requiere `winutils.exe` + `HADOOP_HOME`; en la EC2
   (Ubuntu) no aplica.
-
-## Ejemplos mínimos
-
-### Prueba de humo (CLI)
-
-```bash
-python notebooks/cli.py --input <ruta>/train.parquet --algo logreg \
-    --limite 20000 --driver-memory 4g --out results/humo
-```

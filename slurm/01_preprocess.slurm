@@ -33,7 +33,7 @@ if ! command -v conda >/dev/null 2>&1; then
     export PATH="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}/bin:$PATH"
 fi
 if ! command -v conda >/dev/null 2>&1; then
-    echo "ERROR: no se encontró conda. Ejecute preparar_entorno.sh primero." >&2
+    echo "ERROR: no se encontró conda. Ejecute setup.sh primero." >&2
     exit 1
 fi
 

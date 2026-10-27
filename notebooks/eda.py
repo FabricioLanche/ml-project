@@ -324,10 +324,11 @@ fig.tight_layout(rect=(0, 0, 1, 0.95))
 _guardar_fig(fig, "fig01_distribucion_clases.png")
 
 print("\n[fig02] boxplots de la selección descriptiva en escala log")
-SEL_BOX = ["dur", "sbytes", "sttl", "trans_depth", "Sjit", "Sintpkt",
-           "ct_state_ttl", "ct_srv_src"]
+SEL_BOX = ["Sload", "ct_src_dport_ltm", "Sjit", "Dintpkt", "dur",
+           "Sintpkt", "ct_ftp_cmd", "res_bdy_len", "trans_depth",
+           "ct_dst_src_ltm"]
 print(f"  selección: {SEL_BOX}")
-fig, axes = plt.subplots(2, 4, figsize=(15, 5.5))
+fig, axes = plt.subplots(2, 5, figsize=(15, 5.5))
 for ax, col in zip(axes.ravel(), SEL_BOX):
     datos = np.log10(df[col].astype("float64").dropna().to_numpy() + 1)
     ax.boxplot(datos, orientation="vertical")

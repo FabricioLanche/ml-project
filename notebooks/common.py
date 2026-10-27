@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.classification import (
-    LinearSVC, # Para SVM lineal
+    LinearSVC,
     LogisticRegression,
     OneVsRest,
     RandomForestClassifier,
@@ -18,17 +18,13 @@ from pyspark.ml.feature import (
     VectorAssembler,
 )
 from pyspark.ml.functions import vector_to_array
-from pyspark.sql import Column, DataFrame, Window
+from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
 
 #: Columnas que nunca son features (mismas que `CONTROL` en `pre-process.py`).
 CONTROL = ("label", "attack_cat", "es_duplicado")
 
 ALGOS = ("logreg", "rf", "svm")
-
-#: Semilla del proyecto (la misma de `pre-process.py`). Fija qué filas entran en el
-#: recorte por clase de `cargar_parquet`.
-SEMILLA = 42
 
 #: Hiperparámetros por defecto. Se dejan explícitos para que una corrida sin
 #: `--params` sea autoexplicativa y reproducible. Los de `rf` son débiles a
@@ -48,48 +44,9 @@ PARAMS_POR_DEFECTO: dict[str, dict] = {
 METRICAS = ("accuracy", "promedio_precision", "promedio_recall", "promedio_F1")
 
 
-# ===========================================================================
-# Carga
-# ===========================================================================
-def sanear_columnas(df: DataFrame) -> DataFrame:
-    """Renombra columnas para que no contengan espacios (`ct_src_ ltm`)."""
-    for nombre in list(df.columns):
-        limpio = nombre.replace(" ", "_").replace("-", "_")
-        if limpio != nombre:
-            df = df.withColumnRenamed(nombre, limpio)
-    return df
-
-
-def cargar_parquet(spark, ruta: str | Path, limite: int | None = None) -> DataFrame:
-    """Lee un parquet de la rejilla, lo prepara y opcionalmente limita filas.
-
-    `limite` existe para pruebas de humo rápidas sin materializar 1.7M de filas.
-    El recorte es por clase (`_tope_por_clase`), no por orden físico de las filas.
-    """
-    df = sanear_columnas(spark.read.parquet(str(ruta)))
-    if limite:
-        df = _tope_por_clase(df, limite, SEMILLA)
-    return preparar(df)
-
-
-def _tope_por_clase(df: DataFrame, limite: int, semilla: int) -> DataFrame:
-    """Recorta a ~`limite` filas conservando todas las clases del archivo.
-
-    Toma hasta `limite // n_clases` filas de cada clase (mínimo 1) en lugar de las
-    primeras `limite` filas. El orden físico del parquet no es aleatorio: en las
-    primeras 20k filas de `train.parquet` la clase 0 (Analysis) quedó sin ejemplos,
-    `OneVsRest` no pudo construir su modelo binario y `LinearSVC` abortó con
-    "1 classes detected". Al repartir el tope por clase, toda clase presente en el
-    archivo aporta filas y el humo alcanza para los 10 modelos de `svm`.
-    """
-    n_clases = df.select("label").distinct().count()
-    tope = max(1, limite // max(n_clases, 1))
-    orden = Window.partitionBy("label").orderBy(F.rand(semilla))
-    return (
-        df.withColumn("_fila_clase", F.row_number().over(orden))
-        .where(F.col("_fila_clase") <= tope)
-        .drop("_fila_clase")
-    )
+def cargar_parquet(spark, ruta: str | Path) -> DataFrame:
+    """Lee un Parquet ya materializado con el esquema compatible con Spark ML."""
+    return spark.read.parquet(str(ruta))
 
 
 # ===========================================================================
@@ -106,19 +63,6 @@ def separar_features(df: DataFrame) -> tuple[list[str], list[str]]:
         else:
             numericas.append(nombre)
     return categoricas, numericas
-
-
-def preparar(df: DataFrame) -> DataFrame:
-    """Deja el DataFrame listo para el pipeline.
-
-    Castea los booleanos a double para que `VectorAssembler` no dependa de que la
-    versión de Spark soporte BooleanType. Debe aplicarse ANTES de fitear: el
-    `Pipeline` no muta el DataFrame que recibe.
-    """
-    for nombre, tipo in df.dtypes:
-        if nombre not in CONTROL and tipo == "boolean":
-            df = df.withColumn(nombre, F.col(nombre).cast("double"))
-    return df
 
 
 # ===========================================================================
@@ -146,15 +90,11 @@ def crear_clasificador(algo: str, params: dict | None = None,
                      predictionCol="prediction")
 
 
-def construir_pipeline(df: DataFrame, algo: str, params: dict | None = None,
-                       escala: bool = True) -> Pipeline:
-    """Ensambla el pipeline completo: indexado + one-hot + ensamblado + escalado +
-    clasificador.
+def construir_pipeline_caracteristicas(df: DataFrame, escala: bool = True) -> Pipeline:
+    """Construye transformaciones ajustadas por fold antes del clasificador.
 
-    El one-hot y el escalado se fitean por fold (dentro del pipeline), nunca antes,
-    para que no haya fuga de información del fold de validación.
-
-    El DataFrame debe venir ya `preparar()`-ado (ver `cargar_parquet`).
+    El one-hot y el escalado se fitean por fold, nunca antes, para evitar fuga
+    de información del fold de validación.
     """
     categoricas, numericas = separar_features(df)
 
@@ -168,19 +108,28 @@ def construir_pipeline(df: DataFrame, algo: str, params: dict | None = None,
         etapas.append(OneHotEncoder(inputCol=idx_col, outputCol=ohc_col, handleInvalid="keep"))
         codificadas.append(ohc_col)
 
-    etapas.append(
-        VectorAssembler(inputCols=numericas + codificadas, outputCol="features_raw",
-                        handleInvalid="skip")
-    )
+    etapas.append(VectorAssembler(
+        inputCols=numericas + codificadas,
+        outputCol="features_raw",
+        handleInvalid="skip",
+    ))
 
-    col_features = "features_raw"
     if escala:
         etapas.append(StandardScaler(inputCol="features_raw", outputCol="features",
                                      withMean=False, withStd=True))
-        col_features = "features"
 
-    etapas.append(crear_clasificador(algo, params, col_features))
     return Pipeline(stages=etapas)
+
+
+def construir_pipeline(df: DataFrame, algo: str, params: dict | None = None,
+                       escala: bool = True) -> Pipeline:
+    """Ensambla transformaciones de características y el clasificador."""
+    feature_pipeline = construir_pipeline_caracteristicas(df, escala)
+    col_features = "features" if escala else "features_raw"
+    return Pipeline(stages=[
+        *feature_pipeline.getStages(),
+        crear_clasificador(algo, params, col_features),
+    ])
 
 
 # ===========================================================================

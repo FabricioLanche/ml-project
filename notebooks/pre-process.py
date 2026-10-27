@@ -27,6 +27,8 @@ Notas de alcance
   idénticos en todas las celdas y no forman parte de la rejilla. Se aplican dentro del
   pipeline de MLlib en la etapa de entrenamiento (fit por fold), no aquí. Por eso los
   parquet de `grid/` contienen columnas tabulares, no un vector de features.
+* Los Parquet se escriben con nombres de columnas normalizados y variables booleanas
+  convertidas a valores numéricos, de modo que Spark ML puede leerlos directamente.
 * `StandardScaler` se aplicará también a Random Forest por decisión de uniformidad.
 * El deduplicado (celda P5) se aplica **solo** al fold-train; el fold-val se deja
   íntegro para medir sobre las filas repetidas tal como llegan.
@@ -35,11 +37,15 @@ Ejecución:  python3 notebooks/pre-process.py
 """
 
 import json
+import os
+import re
 import shutil
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+
+os.environ.setdefault("MODIN_ENGINE", "ray")
+import modin.pandas as pd
 
 BASE = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE / "data" / "raw"
@@ -276,6 +282,29 @@ def transform(df: pd.DataFrame, celda: dict, params: dict) -> pd.DataFrame:
     return out.drop(columns=["Ltime"])
 
 
+def preparar_salida_spark(df: pd.DataFrame) -> pd.DataFrame:
+    """Adapta un resultado tabular al esquema que consume Spark ML.
+
+    La normalización se hace una sola vez al persistir el Parquet: Spark no
+    necesita renombrar columnas ni castear booleanos en cada lectura.
+    """
+    out = df.copy()
+    out.columns = [
+        re.sub(r"_+", "_", col.replace(" ", "_").replace("-", "_"))
+        for col in out.columns
+    ]
+    for col in out.columns:
+        if pd.api.types.is_bool_dtype(out[col].dtype):
+            out[col] = out[col].astype("float64")
+    return out
+
+
+def escribir_parquet_spark(df: pd.DataFrame, ruta: Path) -> None:
+    preparar_salida_spark(df).to_parquet(
+        ruta, index=False, compression="snappy"
+    )
+
+
 def _aplicar_log1p(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     for c in params["log1p_cols"]:
         if c in df.columns:
@@ -398,11 +427,11 @@ def main() -> None:
     # ---------------- Persistencia de base/ ----------------
     print("\n[4] escribiendo data/preprocessed/base/")
     base_test = base.iloc[idx_test].reset_index(drop=True)
-    base_test.to_parquet(BASE_DIR / "test.parquet", index=False, compression="snappy")
+    escribir_parquet_spark(base_test, BASE_DIR / "test.parquet")
     tamanos_fold = {}
     for j in range(K):
         sub = base.loc[fold == j].reset_index(drop=True)
-        sub.to_parquet(BASE_DIR / f"fold_{j + 1}.parquet", index=False, compression="snappy")
+        escribir_parquet_spark(sub, BASE_DIR / f"fold_{j + 1}.parquet")
         tamanos_fold[f"fold_{j + 1}"] = int(len(sub))
         print(f"  fold_{j + 1}.parquet  {len(sub):>9,} filas × {sub.shape[1]} cols")
     print(f"  test.parquet     {len(base_test):>9,} filas × {base_test.shape[1]} cols")
@@ -425,8 +454,8 @@ def main() -> None:
             val_df = train_base.loc[train_base["fold_id"] == j, cols_base]
             params, train_t = fit_transform(fit_df, celda)
             val_t = transform(val_df, celda, params)
-            train_t.to_parquet(ronda_dir / "train.parquet", index=False, compression="snappy")
-            val_t.to_parquet(ronda_dir / "val.parquet", index=False, compression="snappy")
+            escribir_parquet_spark(train_t, ronda_dir / "train.parquet")
+            escribir_parquet_spark(val_t, ronda_dir / "val.parquet")
             with open(ronda_dir / "parametros.json", "w") as fh:
                 json.dump(params, fh, ensure_ascii=False, indent=2, default=str)
         manifiesto.append({
