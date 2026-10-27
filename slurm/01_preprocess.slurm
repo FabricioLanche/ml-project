@@ -1,5 +1,5 @@
 #!/bin/bash
-# Materializa base/ y grid/ a partir de data/raw/.
+# Materializa base/, grid_preprocess/ y grid_hyperparams/ a partir de data/raw/.
 # Uso:
 #   sbatch --partition=standard slurm/01_preprocess.slurm
 # Opcional:

@@ -40,12 +40,15 @@ class FoldFeatures:
         self.val.unpersist()
 
 
-def preparar_fold_features(spark, ronda, escala=True) -> FoldFeatures:
+def preparar_fold_features(spark, ronda, escala=True, limite_filas=None) -> FoldFeatures:
     """Lee un fold y ajusta una sola vez sus indexadores, encoder y scaler."""
     from pyspark import StorageLevel
 
     train_df = common.cargar_parquet(spark, ronda / "train.parquet")
     val_df = common.cargar_parquet(spark, ronda / "val.parquet")
+    if limite_filas is not None:
+        train_df = train_df.limit(limite_filas)
+        val_df = val_df.limit(limite_filas)
     pipeline = common.construir_pipeline_caracteristicas(train_df, escala)
     modelo = pipeline.fit(train_df)
     train_features = modelo.transform(train_df).persist(StorageLevel.MEMORY_AND_DISK)

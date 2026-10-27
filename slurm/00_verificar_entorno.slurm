@@ -21,6 +21,7 @@ cd "$PROJECT_DIR"
 for required in \
     requirements.txt \
     notebooks/common.py \
+    notebooks/hiperparametros.py \
     notebooks/train.py \
     notebooks/k-foldCV.py
 do
@@ -115,8 +116,9 @@ fi
 
 if [[ -f data/preprocessed/base/metadatos.json &&
       -f data/preprocessed/base/test.parquet &&
-      -f data/preprocessed/grid/manifiesto.csv ]]; then
-    echo "Datos preprocesados: base/ y grid/ presentes."
+      -f data/preprocessed/grid_preprocess/manifiesto.csv &&
+      -f data/preprocessed/grid_hyperparams/hiperparametros.json ]]; then
+    echo "Datos preprocesados: base/, grid_preprocess/ y grid_hyperparams/ presentes."
 else
     echo "ADVERTENCIA: faltan datos preprocesados; ejecute 01_preprocess.slurm antes de 02_kfoldcv.slurm."
 fi

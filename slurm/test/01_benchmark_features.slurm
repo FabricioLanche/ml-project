@@ -22,6 +22,9 @@ SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-16}"
 DRIVER_MEMORY="${DRIVER_MEMORY:-8g}"
 
 cd "$PROJECT_DIR"
+# Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
+# usa `set -u`.
+export LD_PRELOAD="${LD_PRELOAD-}"
 module purge
 module load miniconda/3.0 >/dev/null 2>&1 || true
 if ! command -v conda >/dev/null 2>&1; then

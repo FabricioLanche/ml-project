@@ -26,18 +26,10 @@ CONTROL = ("label", "attack_cat", "es_duplicado")
 
 ALGOS = ("logreg", "rf", "svm")
 
-#: Hiperparámetros por defecto. Se dejan explícitos para que una corrida sin
-#: `--params` sea autoexplicativa y reproducible. Los de `rf` son débiles a
-#: propósito: son la línea base, no el resultado tuneado.
-#: `rf` fija `seed` porque el bosque muestrea filas (bootstrap) y features: sin
-#: semilla, dos corridas idénticas dan métricas distintas. Se reusa la misma
-#: semilla del proyecto (`--semilla`, 42) para que todo el experimento sea
-#: repetible; el valor en sí es arbitrario y no afecta la calidad del modelo.
-PARAMS_POR_DEFECTO: dict[str, dict] = {
-    "logreg": {"maxIter": 100, "regParam": 0.0, "elasticNetParam": 0.0},
-    "rf": {"numTrees": 20, "maxDepth": 5, "seed": 42},
-    "svm": {"maxIter": 100, "regParam": 0.0, "tol": 1e-6},
-}
+try:
+    from hiperparametros import BASE as PARAMS_POR_DEFECTO
+except ModuleNotFoundError:
+    from notebooks.hiperparametros import BASE as PARAMS_POR_DEFECTO
 
 # Métricas escalares que se reportan por corrida. Los promedios son macro: cada clase
 # pesa igual y la agregación entre folds queda a cargo del orquestador de CV.

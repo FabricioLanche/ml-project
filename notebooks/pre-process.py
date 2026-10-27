@@ -13,7 +13,7 @@ Produce, en `data/preprocessed/`:
   Los archivos de `base/` guardan las features **sin transformar** (más `label`,
   `attack_cat`, `es_duplicado`, `Ltime` y `fold_id`).
 
-* `grid/`
+* `grid_preprocess/`
     - `<celda>/r1..r5/{train,val}.parquet`: una variante por celda y por ronda. En la
       ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train) y se
       aplica congelada a `train` y a `val` (el fold `f`).
@@ -21,12 +21,16 @@ Produce, en `data/preprocessed/`:
       categorías de `proto` conservadas).
     - `manifiesto.csv`: qué receta define cada celda.
 
+* `grid_hyperparams/`
+    - `hiperparametros.json`: base y variaciones de hiperparámetros que consume el
+      entrenamiento. Se edita en `notebooks/hiperparametros.py`.
+
 Notas de alcance
 ----------------
 * El **one-hot** de las categóricas y el **StandardScaler** son transversales: son
   idénticos en todas las celdas y no forman parte de la rejilla. Se aplican dentro del
   pipeline de MLlib en la etapa de entrenamiento (fit por fold), no aquí. Por eso los
-  parquet de `grid/` contienen columnas tabulares, no un vector de features.
+  parquet de `grid_preprocess/` contienen columnas tabulares, no un vector de features.
 * Los Parquet se escriben con nombres de columnas normalizados y variables booleanas
   convertidas a valores numéricos, de modo que Spark ML puede leerlos directamente.
 * `StandardScaler` se aplicará también a Random Forest por decisión de uniformidad.
@@ -47,12 +51,18 @@ import numpy as np
 os.environ.setdefault("MODIN_ENGINE", "ray")
 import modin.pandas as pd
 
+try:
+    from hiperparametros import contenido as contenido_hiperparametros
+except ModuleNotFoundError:
+    from notebooks.hiperparametros import contenido as contenido_hiperparametros
+
 BASE = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE / "data" / "raw"
 PROC_DIR = BASE / "data" / "preprocessed"
 BASE_DIR = PROC_DIR / "base"
-GRID_DIR = PROC_DIR / "grid"
-for _d in (DATA_DIR, BASE_DIR, GRID_DIR):
+GRID_PREPROC_DIR = PROC_DIR / "grid_preprocess"
+GRID_HYPER_DIR = PROC_DIR / "grid_hyperparams"
+for _d in (DATA_DIR, BASE_DIR, GRID_PREPROC_DIR, GRID_HYPER_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 KAGGLE_DATASET = "harshwardhanbhangale/unsw-complete-dataset"
@@ -116,7 +126,7 @@ CT_COLS = [
 BINARIAS = ["is_sm_ips_ports", "is_ftp_login"]
 
 # Columnas que nunca entran al espacio de características. Ltime se conserva aparte en
-# `base/` para ordenar, particionar y auditar; se descarta en `grid/`.
+# `base/` para ordenar, particionar y auditar; se descarta en `grid_preprocess/`.
 ELIMINAR_ESTATICO = {
     "attack_cat": "variable objetivo (se persiste aparte como nombre de clase)",
     "Label": "versión binaria del objetivo (Benign <=> Label=0)",
@@ -157,6 +167,19 @@ _OVERRIDES = {
     "G09": dict(puertos="ninguno", proto="colapsar"),                    # sin puertos + proto
 }
 CELDAS = {cid: {**_BASE_CELL, **ov} for cid, ov in _OVERRIDES.items()}
+
+
+# ===========================================================================
+# Grilla de hiperparámetros
+# ===========================================================================
+def escribir_grilla_hiperparametros() -> Path:
+    """Materializa la base y las variaciones de hiperparámetros en JSON."""
+    destino = GRID_HYPER_DIR / "hiperparametros.json"
+    destino.write_text(
+        json.dumps(contenido_hiperparametros(), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return destino
 
 
 # ===========================================================================
@@ -357,6 +380,8 @@ def asignar_folds(label: np.ndarray, grupo: np.ndarray, k: int, semilla: int) ->
 # ===========================================================================
 def main() -> None:
     print("=== PREPROCESAMIENTO: split + folds + rejilla (sin entrenamiento) ===")
+    ruta_hiper = escribir_grilla_hiperparametros()
+    print(f"[0] grilla de hiperparámetros → {ruta_hiper}")
     asegurar_dataset()
 
     # ---------------- Carga ----------------
@@ -438,14 +463,14 @@ def main() -> None:
 
     # ---------------- Materialización de la rejilla ----------------
     print(f"\n[5] materializando la rejilla de preprocesamiento ({len(CELDAS)} celdas × {K} rondas)")
-    for p in GRID_DIR.glob("G*"):
+    for p in GRID_PREPROC_DIR.glob("G*"):
         if p.is_dir() and p.name not in CELDAS:
             shutil.rmtree(p)
             print(f"  celda obsoleta eliminada: {p.name}")
     train_base = base.loc[fold >= 0].reset_index(drop=True)
     manifiesto = []
     for cid, celda in CELDAS.items():
-        celda_dir = GRID_DIR / cid
+        celda_dir = GRID_PREPROC_DIR / cid
         celda_dir.mkdir(parents=True, exist_ok=True)
         for j in range(K):
             ronda_dir = celda_dir / f"r{j + 1}"
@@ -463,7 +488,7 @@ def main() -> None:
             "puertos": celda["puertos"], "proto": celda["proto"],
         })
         print(f"  {cid}: 5 rondas materializadas")
-    pd.DataFrame(manifiesto).to_csv(GRID_DIR / "manifiesto.csv", index=False)
+    pd.DataFrame(manifiesto).to_csv(GRID_PREPROC_DIR / "manifiesto.csv", index=False)
 
     # Conteo de tokens corruptos (solo para reporte: se imputan con la moda).
     corrup = {
@@ -555,7 +580,8 @@ def main() -> None:
 
     print("\nPreprocesamiento completado.")
     print(f"  base/  → 5 folds + test  (sin transformar)")
-    print(f"  grid/  → {len(CELDAS)} celdas × {K} rondas (train + val por ronda)")
+    print(f"  grid_preprocess/  → {len(CELDAS)} celdas × {K} rondas (train + val por ronda)")
+    print("  grid_hyperparams/ → hiperparametros.json")
 
 
 if __name__ == "__main__":

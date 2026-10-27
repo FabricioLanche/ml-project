@@ -7,6 +7,8 @@ documento se actualiza en el mismo commit.
 
 ## Alcance
 
+- `hiperparametros.py`: base y variaciones de hiperparámetros. `pre-process.py` las
+  materializa en `data/preprocessed/grid_hyperparams/hiperparametros.json`.
 - `common.py`: pipeline MLlib compartido (features, clasificadores, evaluación, E/S).
   No importa `train.py` ni depende de `argparse`.
 - `train.py`: motor del pipeline activo (`construir_spark`, `preparar_fold_features`,
@@ -33,26 +35,46 @@ python notebooks/k-foldCV.py --iteraciones 1 --driver-memory 4g
 ```
 
 La fase 1 compara las diez celdas con los parámetros base. La fase 2 busca las
-combinaciones de `--params` sobre la celda ganadora de cada modelo. Si no se
-proporciona JSON, se usa una rejilla pequeña incorporada al script. El criterio de
-selección es, en orden, mayor media de `promedio_F1`, mayor media de
+variaciones sobre la celda ganadora de cada modelo. La base y la grilla se leen por
+defecto de `data/preprocessed/grid_hyperparams/hiperparametros.json`, generado por
+`pre-process.py`; `--hiperparametros` (alias `--params`) permite usar otro JSON. El
+criterio de selección es, en orden, mayor media de `promedio_F1`, mayor media de
 `promedio_recall`, mayor media de `promedio_precision` y menor `DS_F1`.
 
 `--iteraciones` repite ambas fases. La primera fase de la primera iteración usa
 los parámetros base; después de cada fase 2, sus hiperparámetros ganadores pasan
 a la fase 1 de la siguiente iteración. En cada iteración, la fase 2 usa únicamente
-la rejilla configurada para esa ejecución sobre la celda ganadora de su propia
+la grilla configurada para esa ejecución sobre la celda ganadora de su propia
 fase 1. Solo los ganadores de la última iteración se reentrenan con todo el 85 %
-de entrenamiento. `test.parquet` permanece aislado hasta esa fase final. Un JSON
-personalizado tiene esta forma:
+de entrenamiento. `test.parquet` permanece aislado hasta esa fase final. El JSON
+contiene `base` y `grilla`; esta última se genera como producto cartesiano explícito:
 
-```json
-{
-  "logreg": [{"maxIter": 100, "regParam": 0.1, "elasticNetParam": 0.0}],
-  "rf": [{"numTrees": 50, "maxDepth": 10}],
-  "svm": [{"maxIter": 200, "regParam": 0.1, "tol": 1e-6}]
-}
+| Modelo | Ejes de la grilla | Configuraciones |
+|---|---|---|
+| `logreg` | `regParam {0, 1e-6, 1e-4, 1e-2}` × `elasticNetParam {0.0, 0.5}` | 8 |
+| `rf` | `numTrees {100, 200}` × `maxDepth {10, 18, 25}` × `minInstancesPerNode {1, 10}` × `maxBins {32, 64}` | 24 |
+| `svm` | `maxIter {100, 500}` × `regParam {0, 1e-6, 1e-4, 1e-2}` | 8 |
+
+Cada variación se fusiona sobre `base`, así que solo declara los valores que cambia.
+Los valores se editan en `notebooks/hiperparametros.py`.
+
+Cada fold se persiste como checkpoint en `results/iteracion_N/checkpoints/`. Para
+repartir el trabajo entre jobs:
+
+```bash
+# Solo fase 1, iteración 1
+python notebooks/k-foldCV.py --fase 1 --iteracion 1
+
+# Continuar fase 2 usando la fase 1 ya calculada
+python notebooks/k-foldCV.py --fase 2 --iteracion 1 --reanudar
+
+# Repetir una fase concreta
+python notebooks/k-foldCV.py --fase 1 2 --iteracion 1 --forzar
 ```
+
+`--reanudar` reutiliza checkpoints completados; `--forzar` los ignora. Sin ninguno,
+falla si ya existen checkpoints. `--celdas`, `--rondas` y `--limite-filas` permiten
+smoke tests acotados.
 
 Las salidas se organizan en `results/iteracion_N/fase_1/`, `fase_2/` y
 `results/fase_3/<modelo>/`. En fase 3 se ajusta una única receta de
@@ -97,17 +119,19 @@ Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en
 
 ## Algoritmos e hiperparámetros
 
-`common.ALGOS = ("logreg", "rf", "svm")`. Defaults explícitos en
-`common.PARAMS_POR_DEFECTO` (una corrida sin `params` es reproducible):
+`common.ALGOS = ("logreg", "rf", "svm")`. La base se define en
+`notebooks/hiperparametros.py`, se materializa en
+`data/preprocessed/grid_hyperparams/hiperparametros.json` y `common.PARAMS_POR_DEFECTO`
+la usa como fallback:
 
-| Arma | Defaults | Notas |
+| Arma | Base | Notas |
 |---|---|---|
-| `logreg` | `maxIter=100, regParam=0.0, elasticNetParam=0.0` | LogisticRegression de MLlib |
-| `rf` | `numTrees=20, maxDepth=5, seed=42` | Débiles a propósito: son la línea base, no el resultado tuneado. `seed` fija el muestreo del bosque para que dos corridas idénticas den métricas idénticas |
-| `svm` | `maxIter=100, regParam=0.0, tol=1e-6` | **Lineal**: MLlib no tiene kernels RBF. Al ser binario, se envuelve en `OneVsRest` (10 modelos binarios por fold). Solo expone `rawPrediction`, no `probability` |
+| `logreg` | `maxIter=500, regParam=0.0, elasticNetParam=0.0, tol=1e-6, standardization=False, family=multinomial` | LogisticRegression de MLlib |
+| `rf` | `numTrees=100, maxDepth=18, seed=42, minInstancesPerNode=1, maxBins=32, impurity=gini, featureSubsetStrategy=sqrt` | Línea base. `seed` fija el muestreo del bosque para que dos corridas idénticas den métricas idénticas |
+| `svm` | `maxIter=500, regParam=0.0, tol=1e-6, standardization=False` | **Lineal**: MLlib no tiene kernels RBF. Al ser binario, se envuelve en `OneVsRest` (10 modelos binarios por fold). Solo expone `rawPrediction`, no `probability` |
 
-`params` se fusiona sobre los default (`{**default, **params}`); un parámetro inválido
-produce el `ValueError` nativo del estimador de Spark.
+Cada configuración se fusiona sobre la base (`{**base, **variacion}`); un parámetro
+inválido produce el `ValueError` nativo del estimador de Spark.
 
 ## Métricas de una ronda
 

@@ -29,7 +29,7 @@ def main():
         shuffle_partitions=args.shuffle_partitions,
         app_name="unsw-benchmark-features",
     )
-    ronda = BASE / "data" / "preprocessed" / "grid" / args.cell / f"r{args.fold}"
+    ronda = BASE / "data" / "preprocessed" / "grid_preprocess" / args.cell / f"r{args.fold}"
     inicio = time.perf_counter()
     train_df = common.cargar_parquet(spark, ronda / "train.parquet").limit(args.limit)
     val_df = common.cargar_parquet(spark, ronda / "val.parquet").limit(args.limit)

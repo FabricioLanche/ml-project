@@ -22,7 +22,11 @@ ml-project/
 │   ├── eda.ipynb         # Análisis exploratorio de datos (principal)
 │   ├── eda.py            # Versión en script (desarrollo y debugging)
 │   ├── pre-process.ipynb # Preprocesamiento e ingeniería de características
-│   └── pre-process.py    # Versión en script (desarrollo y debugging)
+│   ├── pre-process.py    # Versión en script (desarrollo y debugging)
+│   ├── hiperparametros.py # Base y grilla de hiperparámetros
+│   ├── common.py         # Pipeline MLlib y evaluación
+│   ├── train.py          # Motor de entrenamiento
+│   └── k-foldCV.py       # Orquestador de fases 1, 2 y 3
 ├── data/                 # Datos generados (no versionado)
 │   ├── raw/              # CSVs originales de UNSW-NB15
 │   ├── eda/              # Salidas del EDA (no del entrenamiento)
@@ -30,7 +34,8 @@ ml-project/
 │   │   └── figuras/      # Figuras *.png
 │   └── preprocessed/     # Entrada del flujo de entrenamiento
 │       ├── base/         # Split 85/15 + folds, features sin transformar
-│       └── grid/         # Variantes de preprocesamiento por celda
+│       ├── grid_preprocess/  # Variantes de preprocesamiento por celda
+│       └── grid_hyperparams/ # Base y variaciones de hiperparámetros
 ├── results/              # Salidas del entrenamiento (métricas, modelos)
 │   ├── iteracion_N/
 │   │   ├── fase_1/
@@ -94,15 +99,20 @@ necesita residir íntegro en memoria.
      ```
 
 3. Ejecutar el preprocesamiento. Genera, en `data/preprocessed/`, el split cronológico 85/15
-   (`base/fold_1..5.parquet` y `base/test.parquet`) y las variantes de la rejilla
-   (`grid/<celda>/r1..r5/`). Además ejecuta las verificaciones de integridad (presencia de
-   las diez clases, alineación de los cortes temporales, ausencia de solapamiento de la
-   ventana `ct_*` entre particiones y ausencia de filas idénticas repartidas entre
-   conjuntos).
+   (`base/fold_1..5.parquet` y `base/test.parquet`), las variantes de preprocesamiento
+   (`grid_preprocess/<celda>/r1..r5/`) y la definición de hiperparámetros
+   (`grid_hyperparams/hiperparametros.json`). Además ejecuta las verificaciones de
+   integridad (presencia de las diez clases, alineación de los cortes temporales, ausencia de
+   solapamiento de la ventana `ct_*` entre particiones y ausencia de filas idénticas
+   repartidas entre conjuntos).
 
    ```bash
    python3 notebooks/pre-process.py
    ```
+
+   La base y las variaciones de hiperparámetros se editan en
+   `notebooks/hiperparametros.py`; el preprocesamiento las materializa en
+   `grid_hyperparams/hiperparametros.json`.
 
 ## Ejecución en Khipu mediante Slurm
 
@@ -163,9 +173,30 @@ PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw ITERACIONES=1 \
   sbatch slurm/02_kfoldcv.slurm
 ```
 
-`01_preprocess.slurm` crea `data/preprocessed/base/` y
-`data/preprocessed/grid/`. `02_kfoldcv.slurm` ejecuta las fases 1 y 2 por modelo y la
-evaluación final de la fase 3. Para consultar el estado y los logs:
+El entrenamiento guarda un checkpoint por fold en
+`results/iteracion_N/checkpoints/`. Para repartir el trabajo en varios jobs:
+
+```bash
+# Solo fase 1, iteración 1
+FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
+
+# Continuar fase 2 usando los checkpoints de la fase 1
+FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
+
+# Repetir una fase concreta
+FASES="1 2" ITERACION=1 FORZAR=1 sbatch slurm/02_kfoldcv.slurm
+
+# Evaluación final de la iteración 1
+FASES="3" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
+```
+
+`REANUDAR=1` reutiliza lo completado; `FORZAR=1` lo ignora. Sin ninguno de los dos,
+el job falla si ya hay checkpoints, para evitar mezclar corridas.
+
+`01_preprocess.slurm` crea `data/preprocessed/base/`, `grid_preprocess/` y
+`grid_hyperparams/`. `02_kfoldcv.slurm` ejecuta las fases 1 y 2 por modelo y la
+evaluación final de la fase 3, leyendo la base y la grilla desde
+`grid_hyperparams/hiperparametros.json`. Para consultar el estado y los logs:
 
 ```bash
 squeue -u "$USER"

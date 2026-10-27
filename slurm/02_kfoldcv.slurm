@@ -5,6 +5,9 @@
 # Opcional:
 #   ITERACIONES=1 PROJECT_DIR=/ruta/ml-project CONDA_ENV=ml-unsw \
 #     sbatch slurm/02_kfoldcv.slurm
+#   FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
+#   FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
+#   FASES="1 2 3" ITERACION=1 FORZAR=1 sbatch slurm/02_kfoldcv.slurm
 
 #SBATCH --job-name=unsw-kfold
 #SBATCH --partition=standard
@@ -24,6 +27,10 @@ set -Eeuo pipefail
 PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 ITERACIONES="${ITERACIONES:-1}"
+ITERACION="${ITERACION:-}"
+FASES="${FASES:-1 2 3}"
+REANUDAR="${REANUDAR:-0}"
+FORZAR="${FORZAR:-0}"
 SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
 # Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
 # al proceso Python y al overhead de Spark.
@@ -50,7 +57,8 @@ conda activate "$CONDA_ENV"
 for required in \
     data/preprocessed/base/metadatos.json \
     data/preprocessed/base/test.parquet \
-    data/preprocessed/grid/manifiesto.csv
+    data/preprocessed/grid_preprocess/manifiesto.csv \
+    data/preprocessed/grid_hyperparams/hiperparametros.json
 do
     if [[ ! -e "$required" ]]; then
         echo "ERROR: falta $required. Ejecute primero 01_preprocess.slurm." >&2
@@ -59,12 +67,24 @@ do
 done
 
 echo "Iniciando k-fold CV en $(hostname)"
-echo "Iteraciones: $ITERACIONES"
+echo "Fases: $FASES"
+echo "Iteraciones: ${ITERACION:-$ITERACIONES}"
+echo "Reanudar: $REANUDAR · Forzar: $FORZAR"
 echo "Driver memory: $DRIVER_MEMORY"
 
-srun --ntasks=1 python -u notebooks/k-foldCV.py \
-    --iteraciones "$ITERACIONES" \
-    --driver-memory "$DRIVER_MEMORY" \
-    --shuffle-partitions "$SHUFFLE_PARTITIONS"
+args=(--fase $FASES --driver-memory "$DRIVER_MEMORY"
+      --shuffle-partitions "$SHUFFLE_PARTITIONS")
+if [[ -n "$ITERACION" ]]; then
+    args+=(--iteracion "$ITERACION")
+else
+    args+=(--iteraciones "$ITERACIONES")
+fi
+if [[ "$FORZAR" == "1" ]]; then
+    args+=(--forzar)
+elif [[ "$REANUDAR" == "1" ]]; then
+    args+=(--reanudar)
+fi
+
+srun --ntasks=1 python -u notebooks/k-foldCV.py "${args[@]}"
 
 echo "k-fold CV y evaluación final completados."
