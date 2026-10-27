@@ -47,6 +47,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import pandas as pandas_std
 
 os.environ.setdefault("MODIN_ENGINE", "ray")
 import modin.pandas as pd
@@ -407,7 +408,9 @@ def main() -> None:
 
     cols_hash = [c for c in df.columns if c not in ("attack_cat", "Label")]
     df = df.sort_values("Ltime", kind="stable").reset_index(drop=True)
-    grupo = pd.util.hash_pandas_object(df[cols_hash], index=False).to_numpy()
+    grupo = pandas_std.util.hash_pandas_object(
+        df[cols_hash].modin.to_pandas(), index=False
+    ).to_numpy()
     es_dup = df.duplicated(keep=False).to_numpy()
     dup_exceso = int(df.duplicated().sum())
     n = len(df)
