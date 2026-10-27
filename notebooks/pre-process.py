@@ -325,6 +325,33 @@ def escribir_parquet_spark(df: pd.DataFrame, ruta: Path) -> None:
     )
 
 
+def validar_salidas_preprocesamiento() -> None:
+    """Falla si la materialización no dejó todos los artefactos requeridos por k-fold."""
+    requeridos = [
+        BASE_DIR / "metadatos.json",
+        BASE_DIR / "test.parquet",
+        *(BASE_DIR / f"fold_{i}.parquet" for i in range(1, K + 1)),
+        GRID_PREPROC_DIR / "manifiesto.csv",
+        GRID_HYPER_DIR / "hiperparametros.json",
+    ]
+    for celda in CELDAS:
+        for ronda in range(1, K + 1):
+            directorio = GRID_PREPROC_DIR / celda / f"r{ronda}"
+            requeridos.extend((
+                directorio / "train.parquet",
+                directorio / "val.parquet",
+                directorio / "parametros.json",
+            ))
+
+    faltantes = [ruta for ruta in requeridos if not ruta.is_file() or ruta.stat().st_size == 0]
+    if faltantes:
+        detalle = "\n".join(f"  - {ruta}" for ruta in faltantes)
+        raise FileNotFoundError(
+            "Preprocesamiento incompleto; faltan artefactos requeridos por k-fold:\n"
+            f"{detalle}"
+        )
+
+
 def _aplicar_log1p(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     for c in params["log1p_cols"]:
         if c in df.columns:
@@ -575,7 +602,8 @@ def main() -> None:
     for col, c in corrup.items():
         print(f"  {col:8s} {c['totales']:>4} nulos · train={c['train']:>4} · test={c['test']:>4}")
 
-    print("\nPreprocesamiento completado.")
+    validar_salidas_preprocesamiento()
+    print("\nPreprocesamiento completado y artefactos verificados.")
     print(f"  base/  → 5 folds + test  (sin transformar)")
     print(f"  grid_preprocess/  → {len(CELDAS)} celdas × {K} rondas (train + val por ronda)")
     print("  grid_hyperparams/ → hiperparametros.json")

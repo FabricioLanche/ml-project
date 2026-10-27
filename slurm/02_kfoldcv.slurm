@@ -37,6 +37,7 @@ SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
 DRIVER_MEMORY="${DRIVER_MEMORY:-72g}"
 
 cd "$PROJECT_DIR"
+echo "Proyecto: $PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
 # usa `set -u`.
 export LD_PRELOAD="${LD_PRELOAD-}"
@@ -54,17 +55,47 @@ fi
 eval "$(conda shell.bash hook)"
 conda activate "$CONDA_ENV"
 
-for required in \
-    data/preprocessed/base/metadatos.json \
-    data/preprocessed/base/test.parquet \
-    data/preprocessed/grid_preprocess/manifiesto.csv \
+read -r -a fases_array <<< "$FASES"
+required_files=(
+    data/preprocessed/grid_preprocess/manifiesto.csv
     data/preprocessed/grid_hyperparams/hiperparametros.json
-do
-    if [[ ! -e "$required" ]]; then
-        echo "ERROR: falta $required. Ejecute primero 01_preprocess.slurm." >&2
-        exit 1
+)
+for fase in "${fases_array[@]}"; do
+    case "$fase" in
+        1|2)
+            for celda in {00..09}; do
+                for ronda in {1..5}; do
+                    required_files+=(
+                        "data/preprocessed/grid_preprocess/G$celda/r$ronda/train.parquet"
+                        "data/preprocessed/grid_preprocess/G$celda/r$ronda/val.parquet"
+                    )
+                done
+            done
+            ;;
+        3)
+            required_files+=(
+                data/preprocessed/base/metadatos.json
+                data/preprocessed/base/test.parquet
+            )
+            for fold in {1..5}; do
+                required_files+=("data/preprocessed/base/fold_$fold.parquet")
+            done
+            ;;
+    esac
+done
+missing_files=()
+for required in "${required_files[@]}"; do
+    if [[ ! -s "$required" ]]; then
+        missing_files+=("$required")
     fi
 done
+if (( ${#missing_files[@]} > 0 )); then
+    echo "ERROR: faltan artefactos de preprocesamiento en '$PROJECT_DIR':" >&2
+    printf '  - %s\n' "${missing_files[@]}" >&2
+    echo "Artefactos requeridos para FASES='$FASES'. La fase 1 necesita la rejilla materializada; la fase 3 necesita base/." >&2
+    echo "Revise los logs slurm-<JOB_PREPROCESS>-preprocess.out y .err, y el estado con: sacct -j <JOB_PREPROCESS> --format=JobID,State,ExitCode" >&2
+    exit 1
+fi
 
 echo "Iniciando k-fold CV en $(hostname)"
 echo "Fases: $FASES"
@@ -72,7 +103,7 @@ echo "Iteraciones: ${ITERACION:-$ITERACIONES}"
 echo "Reanudar: $REANUDAR · Forzar: $FORZAR"
 echo "Driver memory: $DRIVER_MEMORY"
 
-args=(--fase $FASES --driver-memory "$DRIVER_MEMORY"
+args=(--fase "${fases_array[@]}" --driver-memory "$DRIVER_MEMORY"
       --shuffle-partitions "$SHUFFLE_PARTITIONS")
 if [[ -n "$ITERACION" ]]; then
     args+=(--iteracion "$ITERACION")

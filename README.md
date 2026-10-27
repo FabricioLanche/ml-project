@@ -162,16 +162,25 @@ cd /ruta/al/ml-project
 CONDA_ENV=ml-unsw sbatch --partition=debug slurm/00_verificar_entorno.slurm
 ```
 
-Después ejecute los jobs en orden; el segundo debe terminar
-antes de enviar el tercero:
+El preprocesamiento crea las carpetas al inicio y materializa los archivos gradualmente;
+que existan esas carpetas no significa que el job haya terminado. Espere a que el job
+termine con estado `COMPLETED` y `ExitCode 0:0` antes de enviar k-fold. El preflight de
+k-fold valida los artefactos que necesita cada fase: fases 1 y 2 necesitan la grilla y los
+hiperparámetros; fase 3 necesita además `base/` y sus metadatos. También puede encadenar
+los jobs para que k-fold solo comience si el preprocesamiento termina correctamente:
 
 ```bash
 PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw \
   sbatch slurm/01_preprocess.slurm
 
-PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw ITERACIONES=1 \
-  sbatch slurm/02_kfoldcv.slurm
+PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw \
+  sbatch --dependency=afterok:<JOB_PREPROCESS> slurm/02_kfoldcv.slurm
 ```
+
+Sustituya `<JOB_PREPROCESS>` por el ID devuelto por el primer `sbatch`. Si el preflight
+informa artefactos faltantes para una fase, revise los logs
+`slurm-<JOB_PREPROCESS>-preprocess.out` y `.err`, y confirme la ruta de trabajo impresa
+por ambos jobs.
 
 El entrenamiento guarda un checkpoint por fold en
 `results/iteracion_N/checkpoints/`. Para repartir el trabajo en varios jobs:
