@@ -21,6 +21,8 @@ def construir_spark(master="local[*]", *, driver_memory=None, shuffle_partitions
         builder = builder.config("spark.driver.memory", driver_memory)
     if master.startswith("local"):
         builder = builder.config("spark.sql.adaptive.enabled", "true")
+        builder = builder.config("spark.sql.adaptive.coalescePartitions.enabled", "true")
+        builder = builder.config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 
     spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")

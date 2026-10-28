@@ -8,6 +8,9 @@
 #   FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
 #   FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
 #   FASES="1 2 3" ITERACION=1 FORZAR=1 sbatch slurm/02_kfoldcv.slurm
+#   FASES="1" ITERACION=1 CELDA=G03 sbatch slurm/02_kfoldcv.slurm
+#   FASES="1" ITERACION=1 MODELOS="logreg rf" RONDAS="1 3" sbatch slurm/02_kfoldcv.slurm
+#   FASES="1" ITERACION=1 LIMITE_FILAS=5000 sbatch slurm/02_kfoldcv.slurm
 
 #SBATCH --job-name=unsw-kfold
 #SBATCH --partition=standard
@@ -35,6 +38,10 @@ SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
 # Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
 # al proceso Python y al overhead de Spark.
 DRIVER_MEMORY="${DRIVER_MEMORY:-72g}"
+CELDA="${CELDA:-}"
+MODELOS="${MODELOS:-}"
+RONDAS="${RONDAS:-}"
+LIMITE_FILAS="${LIMITE_FILAS:-}"
 
 cd "$PROJECT_DIR"
 echo "Proyecto: $PROJECT_DIR"
@@ -105,6 +112,20 @@ echo "Driver memory: $DRIVER_MEMORY"
 
 args=(--fase "${fases_array[@]}" --driver-memory "$DRIVER_MEMORY"
       --shuffle-partitions "$SHUFFLE_PARTITIONS")
+if [[ -n "$CELDA" ]]; then
+    args+=(--celdas "$CELDA")
+fi
+if [[ -n "$MODELOS" ]]; then
+    read -r -a modelos_array <<< "$MODELOS"
+    args+=(--modelos "${modelos_array[@]}")
+fi
+if [[ -n "$RONDAS" ]]; then
+    read -r -a rondas_array <<< "$RONDAS"
+    args+=(--rondas "${rondas_array[@]}")
+fi
+if [[ -n "$LIMITE_FILAS" ]]; then
+    args+=(--limite-filas "$LIMITE_FILAS")
+fi
 if [[ -n "$ITERACION" ]]; then
     args+=(--iteracion "$ITERACION")
 else
