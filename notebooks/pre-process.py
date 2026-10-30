@@ -17,9 +17,10 @@ Produce, en `data/preprocessed/`:
     - `<celda>/r1..r5/{train,val}.parquet`: una variante por celda y por ronda. En la
       ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train) y se
       aplica congelada a `train` y a `val` (el fold `f`).
-    - `<celda>/r*/parametros.json`: los valores fiteados (modas, columnas log1p,
-      categorías de `proto` conservadas).
+    - `<celda>/r*/parametros.json`: los valores fiteados (modas y columnas log1p).
     - `manifiesto.csv`: qué receta define cada celda.
+    - `estadisticas_muestreo.csv`: filas, grupos únicos y proporción duplicada por
+      clase, celda y ronda, antes y después del deduplicado.
 
 * `grid_hyperparams/`
     - `hiperparametros.json`: base y variaciones de hiperparámetros que consume el
@@ -34,12 +35,21 @@ Notas de alcance
 * Los Parquet se escriben con nombres de columnas normalizados y variables booleanas
   convertidas a valores numéricos, de modo que Spark ML puede leerlos directamente.
 * `StandardScaler` se aplicará también a Random Forest por decisión de uniformidad.
-* El deduplicado (celda P5) se aplica **solo** al fold-train; el fold-val se deja
-  íntegro para medir sobre las filas repetidas tal como llegan.
+* `proto` conserva sus categorías originales en todas las celdas y recibe one-hot
+  completo durante el ajuste del pipeline de MLlib.
+* El deduplicado (en las celdas que lo activan) se aplica **solo** al fold-train; el
+  fold-val se deja íntegro para medir sobre las filas repetidas tal como llegan.
+* Cada `train.parquet` se limita por clase a 100,000 filas por defecto, con semilla 42.
+  `--limite-por-categoria 0` lo desactiva; la validación y `base/` permanecen completas.
+* El muestreo se hace antes del deduplicado para que las cuatro celdas de cada ronda
+  partan de las mismas filas.
+* La selección de columnas `log1p` se calcula sobre el fold-train completo antes del
+  muestreo y se comparte entre celdas; en fase 3 se recalcula con todo el train.
 
 Ejecución:  python3 notebooks/pre-process.py
 """
 
+import argparse
 import json
 import re
 import shutil
@@ -109,7 +119,8 @@ NA_VALUES = {
 LABEL_COL = "label"
 CLASE_COL = "attack_cat"
 DUP_COL = "es_duplicado"
-CONTROL = {LABEL_COL, CLASE_COL, DUP_COL}
+GRUPO_COL = "_grupo_duplicado"
+CONTROL = {LABEL_COL, CLASE_COL, DUP_COL, GRUPO_COL}
 
 BLANCOS_ESTRUCTURALES = ["is_ftp_login", "ct_ftp_cmd", "ct_flw_http_mthd"]
 IMPUTAR = ["dsport", "sport", "state"]
@@ -136,32 +147,23 @@ ELIMINAR_ESTATICO = {
 K = 5
 FRACCION_TRAIN = 0.85
 SEMILLA = 42
-UMBRAL_PROTO_COLA = 0.01
+LIMITE_POR_CATEGORIA_DEFAULT = 100_000
+SEMILLA_SUBMUESTREO = 42
 UMBRAL_LOG1P = 1.0
 
 # ===========================================================================
-# Rejilla de preprocesamiento (10 celdas, numeración continua G00..G09)
+# Rejilla de preprocesamiento (4 celdas, numeración continua G00..G03)
 # ===========================================================================
-# Ejes: ct_* (con/sin), dedup, puertos (franja / ninguno), cola de proto. La variante
-# `puertos="ninguno"` se cruza con las ablaciones simples (G07/G08/G09) para medir si el
-# efecto de quitar los puertos se mantiene junto a los otros cambios. El `log1p` (umbral
-# 1), el `StandardScaler` y la imputación de tokens corruptos por la moda son
-# transversales: se aplican siempre, no se buscan. El winsorizado p99 se descartó por
-# solapar con `log1p`, y la variante `efimero` de los puertos por quedar contenida en la
-# franja (clasificación IANA).
-_BASE_CELL = dict(ct=True, dedup=False, puertos="solo_franja", proto="completo")
+# Solo varían la presencia de ct_* y el deduplicado. Los puertos siempre se agrupan
+# por franja IANA y proto conserva todas sus categorías para el one-hot posterior.
+# El log1p (umbral 1), StandardScaler y la imputación por moda son transversales.
+_BASE_CELL = dict(ct=True, dedup=False)
 
 _OVERRIDES = {
-    "G00": {},                                                            # base
-    "G01": dict(ct=False),                                               # sin ct_*
-    "G02": dict(dedup=True),                                             # deduplicar
-    "G03": dict(puertos="ninguno"),                                      # sin puertos
-    "G04": dict(proto="colapsar"),                                       # cola de proto
-    "G05": dict(dedup=True, ct=False),
-    "G06": dict(dedup=True, proto="colapsar"),
-    "G07": dict(puertos="ninguno", ct=False),                            # sin puertos + sin ct_*
-    "G08": dict(puertos="ninguno", dedup=True),                          # sin puertos + dedup
-    "G09": dict(puertos="ninguno", proto="colapsar"),                    # sin puertos + proto
+    "G00": {},                              # base
+    "G01": dict(ct=False),                  # sin ct_*
+    "G02": dict(dedup=True),                # deduplicar
+    "G03": dict(dedup=True, ct=False),      # deduplicar + sin ct_*
 }
 CELDAS = {cid: {**_BASE_CELL, **ov} for cid, ov in _OVERRIDES.items()}
 
@@ -234,17 +236,12 @@ def _rellenar_nulos(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     return out
 
 
-def _derivar_puertos(df: pd.DataFrame, celda: dict) -> pd.DataFrame:
-    """Deriva la franja IANA de los puertos (si la celda la pide) y elimina el crudo.
-
-    Con `puertos="ninguno"` se descarta toda la información de puerto. La variante
-    `efimero` (≥1024) quedó descartada: está contenida en `franja`.
-    """
+def _derivar_puertos(df: pd.DataFrame) -> pd.DataFrame:
+    """Deriva la franja IANA de los puertos y elimina los valores crudos."""
     out = df
-    if celda["puertos"] != "ninguno":
-        for pre in ("sport", "dsport"):
-            if pre in out.columns:
-                out[f"{pre}_franja"] = _franja(out[pre])
+    for pre in ("sport", "dsport"):
+        if pre in out.columns:
+            out[f"{pre}_franja"] = _franja(out[pre])
     return out.drop(columns=["sport", "dsport"])
 
 
@@ -254,52 +251,133 @@ def _filtrar_ct(df: pd.DataFrame, celda: dict) -> pd.DataFrame:
     return df.drop(columns=[c for c in CT_COLS if c in df.columns])
 
 
-def fit_transform(train: pd.DataFrame, celda: dict) -> tuple[dict, pd.DataFrame]:
-    """Fitea la receta en `train` y devuelve (parámetros, train transformado).
+def submuestrear_por_categoria(
+    train: pd.DataFrame,
+    limite_por_categoria: int,
+    semilla: int = SEMILLA_SUBMUESTREO,
+) -> pd.DataFrame:
+    """Limita cada clase de train a una muestra exacta y reproducible."""
+    if limite_por_categoria < 0:
+        raise ValueError("limite_por_categoria debe ser mayor o igual a cero")
+    if limite_por_categoria == 0:
+        return train
 
-    El deduplicado (si la celda lo pide) se aplica antes de fitear, porque las
-    estadísticas deben salir de los datos con los que realmente se entrena.
+    muestras = []
+    resumen = []
+    for clase, grupo in train.groupby(LABEL_COL, observed=True, sort=True):
+        cantidad = min(len(grupo), limite_por_categoria)
+        muestra = grupo if len(grupo) <= limite_por_categoria else grupo.sample(
+            n=limite_por_categoria, random_state=semilla
+        )
+        muestras.append(muestra)
+        resumen.append(f"{clase} {len(grupo):,} → {cantidad:,}")
+
+    print(
+        f"  submuestreo materializado por clase (límite "
+        f"{limite_por_categoria:,}): " + ", ".join(resumen)
+    )
+    return pd.concat(muestras, ignore_index=True)
+
+
+def _resumen_grupos_por_clase(df: pd.DataFrame) -> dict[int, dict]:
+    if GRUPO_COL not in df.columns:
+        return {}
+
+    resumen = {}
+    for etiqueta, grupo in df.groupby(LABEL_COL, observed=True, sort=True):
+        duplicadas = int(grupo[GRUPO_COL].duplicated(keep=False).sum())
+        resumen[int(etiqueta)] = {
+            "clase": str(grupo[CLASE_COL].iloc[0]),
+            "filas": int(len(grupo)),
+            "grupos_unicos": int(grupo[GRUPO_COL].nunique()),
+            "filas_en_grupos_repetidos": duplicadas,
+            "proporcion_filas_duplicadas": duplicadas / len(grupo),
+        }
+    return resumen
+
+
+def seleccionar_log1p_cols(train: pd.DataFrame) -> list[str]:
+    """Selecciona columnas usando la distribución completa del fold-train."""
+    params = {"modas": {}}
+    for col in IMPUTAR:
+        modo = train[col].dropna().mode()
+        v = modo.iat[0] if len(modo) else np.nan
+        params["modas"][col] = v.item() if hasattr(v, "item") else v
+
+    w = _rellenar_nulos(train, params)
+    w = _derivar_puertos(w)
+    columnas = []
+    for col in _columnas_numericas(w):
+        serie = pd.to_numeric(w[col], errors="coerce").astype("float64")
+        if abs(float(serie.skew())) > UMBRAL_LOG1P:
+            columnas.append(col)
+    return columnas
+
+
+def fit_transform(
+    train: pd.DataFrame,
+    celda: dict,
+    *,
+    limite_por_categoria: int | None = None,
+    semilla: int = SEMILLA_SUBMUESTREO,
+    log1p_cols: list[str] | None = None,
+) -> tuple[dict, pd.DataFrame, list[dict]]:
+    """Fitea la receta y devuelve parámetros, train transformado y estadísticas.
+
+    Todas las celdas parten de la misma muestra; el deduplicado se aplica después.
+    `limite_por_categoria=None` conserva todas las filas, como en la fase final.
     """
+    columnas_log1p = (
+        seleccionar_log1p_cols(train) if log1p_cols is None else log1p_cols
+    )
     fit = train
-    if celda["dedup"]:
-        feat = [c for c in train.columns if c not in CONTROL]
-        fit = train.drop_duplicates(subset=feat)
+    if limite_por_categoria is not None:
+        fit = submuestrear_por_categoria(fit, limite_por_categoria, semilla)
+    resumen_muestra = _resumen_grupos_por_clase(fit)
 
-    params: dict = {"modas": {}, "log1p_cols": [], "proto_top": []}
+    if celda["dedup"]:
+        feat = [c for c in fit.columns if c not in CONTROL]
+        fit = fit.drop_duplicates(subset=feat)
+    resumen_train = _resumen_grupos_por_clase(fit)
+    estadisticas = [
+        {
+            "label": etiqueta,
+            "clase": valores["clase"],
+            "filas_muestra": valores["filas"],
+            "grupos_unicos_muestra": valores["grupos_unicos"],
+            "filas_en_grupos_repetidos_muestra": valores["filas_en_grupos_repetidos"],
+            "proporcion_filas_duplicadas_muestra": valores["proporcion_filas_duplicadas"],
+            "filas_train": resumen_train[etiqueta]["filas"],
+            "grupos_unicos_train": resumen_train[etiqueta]["grupos_unicos"],
+            "filas_en_grupos_repetidos_train":
+                resumen_train[etiqueta]["filas_en_grupos_repetidos"],
+            "proporcion_filas_duplicadas_train":
+                resumen_train[etiqueta]["proporcion_filas_duplicadas"],
+        }
+        for etiqueta, valores in resumen_muestra.items()
+    ]
+
+    params: dict = {"modas": {}, "log1p_cols": list(columnas_log1p)}
     for col in IMPUTAR:
         modo = fit[col].dropna().mode()
         v = modo.iat[0] if len(modo) else np.nan
         params["modas"][col] = v.item() if hasattr(v, "item") else v
 
     w = _rellenar_nulos(fit, params)
-    w = _derivar_puertos(w, celda)
+    w = _derivar_puertos(w)
     w = _filtrar_ct(w, celda)
 
-    if celda["proto"] == "colapsar":
-        frec = w["proto"].value_counts(normalize=True)
-        params["proto_top"] = frec[frec >= UMBRAL_PROTO_COLA].index.tolist()
-        w["proto"] = w["proto"].where(w["proto"].isin(params["proto_top"]), "otros")
-
-    # `log1p` transversal: se seleccionan las columnas |asimetría| > 1 sobre el
-    # fold-train y se aplican a todas las celdas (winsor descartado por solapar).
-    for c in _columnas_numericas(w):
-        s = pd.to_numeric(w[c], errors="coerce").astype("float64")
-        if abs(float(s.skew())) > UMBRAL_LOG1P:
-            params["log1p_cols"].append(c)
-
     w = _aplicar_log1p(w, params)
-    return params, w.drop(columns=["Ltime"])
+    return params, w.drop(columns=["Ltime", GRUPO_COL], errors="ignore"), estadisticas
 
 
 def transform(df: pd.DataFrame, celda: dict, params: dict) -> pd.DataFrame:
     """Aplica una receta ya fiteada (para el fold-val o el test)."""
     out = _rellenar_nulos(df, params)
-    out = _derivar_puertos(out, celda)
+    out = _derivar_puertos(out)
     out = _filtrar_ct(out, celda)
-    if celda["proto"] == "colapsar":
-        out["proto"] = out["proto"].where(out["proto"].isin(params["proto_top"]), "otros")
     out = _aplicar_log1p(out, params)
-    return out.drop(columns=["Ltime"])
+    return out.drop(columns=["Ltime", GRUPO_COL], errors="ignore")
 
 
 def preparar_salida_spark(df: pd.DataFrame) -> pd.DataFrame:
@@ -402,8 +480,26 @@ def asignar_folds(label: np.ndarray, grupo: np.ndarray, k: int, semilla: int) ->
 # ===========================================================================
 # 1. Carga y limpieza estática
 # ===========================================================================
-def main() -> None:
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--limite-por-categoria",
+        type=int,
+        default=LIMITE_POR_CATEGORIA_DEFAULT,
+        help="máximo de filas por clase en train de cada fold; 0 desactiva",
+    )
+    args = parser.parse_args(argv)
+    if args.limite_por_categoria < 0:
+        parser.error("--limite-por-categoria debe ser mayor o igual a cero")
+
     print("=== PREPROCESAMIENTO: split + folds + rejilla (sin entrenamiento) ===")
+    print(
+        f"Límite de train por categoría: "
+        f"{args.limite_por_categoria:,} "
+        f"(semilla de muestreo {SEMILLA_SUBMUESTREO})"
+        if args.limite_por_categoria
+        else "Límite de train por categoría: desactivado"
+    )
     ruta_hiper = escribir_grilla_hiperparametros()
     print(f"[0] grilla de hiperparámetros → {ruta_hiper}")
     asegurar_dataset()
@@ -457,11 +553,12 @@ def main() -> None:
     label = df["attack_cat"].map(mapa).astype("int8").to_numpy()
 
     features = [c for c in df.columns if c not in ELIMINAR_ESTATICO]
-    cols_base = features + [LABEL_COL, CLASE_COL, DUP_COL, "Ltime"]
+    cols_base = features + [LABEL_COL, CLASE_COL, DUP_COL, GRUPO_COL, "Ltime"]
     base = df[features].copy()
     base[LABEL_COL] = label
     base[CLASE_COL] = df["attack_cat"].to_numpy()
     base[DUP_COL] = es_dup.astype("int8")
+    base[GRUPO_COL] = grupo
     base["Ltime"] = ltime
 
     # ---------------- Folds ----------------
@@ -475,11 +572,11 @@ def main() -> None:
 
     # ---------------- Persistencia de base/ ----------------
     print("\n[4] escribiendo data/preprocessed/base/")
-    base_test = base.iloc[idx_test].reset_index(drop=True)
+    base_test = base.iloc[idx_test].drop(columns=[GRUPO_COL]).reset_index(drop=True)
     escribir_parquet_spark(base_test, BASE_DIR / "test.parquet")
     tamanos_fold = {}
     for j in range(K):
-        sub = base.loc[fold == j].reset_index(drop=True)
+        sub = base.loc[fold == j].drop(columns=[GRUPO_COL]).reset_index(drop=True)
         escribir_parquet_spark(sub, BASE_DIR / f"fold_{j + 1}.parquet")
         tamanos_fold[f"fold_{j + 1}"] = int(len(sub))
         print(f"  fold_{j + 1}.parquet  {len(sub):>9,} filas × {sub.shape[1]} cols")
@@ -493,6 +590,8 @@ def main() -> None:
             print(f"  celda obsoleta eliminada: {p.name}")
     train_base = base.loc[fold >= 0].reset_index(drop=True)
     manifiesto = []
+    estadisticas_muestreo = []
+    log1p_por_ronda = {}
     for cid, celda in CELDAS.items():
         celda_dir = GRID_PREPROC_DIR / cid
         celda_dir.mkdir(parents=True, exist_ok=True)
@@ -501,7 +600,18 @@ def main() -> None:
             ronda_dir.mkdir(parents=True, exist_ok=True)
             fit_df = train_base.loc[train_base["fold_id"] != j, cols_base]
             val_df = train_base.loc[train_base["fold_id"] == j, cols_base]
-            params, train_t = fit_transform(fit_df, celda)
+            if j not in log1p_por_ronda:
+                log1p_por_ronda[j] = seleccionar_log1p_cols(fit_df)
+            params, train_t, estadisticas = fit_transform(
+                fit_df, celda,
+                limite_por_categoria=args.limite_por_categoria,
+                semilla=SEMILLA_SUBMUESTREO,
+                log1p_cols=log1p_por_ronda[j],
+            )
+            estadisticas_muestreo.extend(
+                {"celda": cid, "ronda": j + 1, **fila}
+                for fila in estadisticas
+            )
             val_t = transform(val_df, celda, params)
             escribir_parquet_spark(train_t, ronda_dir / "train.parquet")
             escribir_parquet_spark(val_t, ronda_dir / "val.parquet")
@@ -509,10 +619,13 @@ def main() -> None:
                 json.dump(params, fh, ensure_ascii=False, indent=2, default=str)
         manifiesto.append({
             "celda": cid, "ct": celda["ct"], "deduplicar": celda["dedup"],
-            "puertos": celda["puertos"], "proto": celda["proto"],
+            "puertos": "solo_franja", "proto": "completo",
         })
         print(f"  {cid}: 5 rondas materializadas")
     pd.DataFrame(manifiesto).to_csv(GRID_PREPROC_DIR / "manifiesto.csv", index=False)
+    pd.DataFrame(estadisticas_muestreo).to_csv(
+        GRID_PREPROC_DIR / "estadisticas_muestreo.csv", index=False
+    )
 
     # Conteo de tokens corruptos (solo para reporte: se imputan con la moda).
     corrup = {
@@ -534,6 +647,10 @@ def main() -> None:
         "Ltime_corte_train_test": str(pd.to_datetime(int(ltime[c_indice]), unit="s")),
         "K": K,
         "semilla": SEMILLA,
+        "limite_por_categoria": args.limite_por_categoria,
+        "semilla_submuestreo": SEMILLA_SUBMUESTREO,
+        "submuestreo_comun_antes_de_deduplicar": True,
+        "log1p_seleccion_fold_train_completo": True,
         "tamanos_folds": tamanos_fold,
         "columnas_features": features,
         "columnas_control": [LABEL_COL, CLASE_COL, DUP_COL],
@@ -545,7 +662,6 @@ def main() -> None:
         "clases_por_indice": {str(v): c for c, v in mapa.items()},
         "rejilla": manifiesto,
         "umbral_log1p": UMBRAL_LOG1P,
-        "umbral_proto_cola": UMBRAL_PROTO_COLA,
     }
     with open(BASE_DIR / "metadatos.json", "w") as fh:
         json.dump(meta, fh, ensure_ascii=False, indent=2, default=str)

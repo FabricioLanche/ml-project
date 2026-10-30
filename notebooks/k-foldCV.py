@@ -8,8 +8,9 @@ materializadas por ``pre-process.py``. El conjunto ``base/test.parquet`` solo se
 usa al final, después de la última iteración.
 
 Cada fold se persiste como checkpoint en ``results/iteracion_N/checkpoints``.
-``--reanudar`` reutiliza lo completado y ``--forzar`` lo ignora. ``--fase`` y
-``--iteracion`` permiten ejecutar una parte explícita del flujo en jobs separados.
+Por defecto, las fases solicitadas y las posteriores que dependen de ellas se
+recalculan. ``--reanudar`` conserva lo completado. ``--fase`` y ``--iteracion``
+permiten ejecutar una parte explícita del flujo en jobs separados.
 """
 
 import argparse
@@ -17,9 +18,13 @@ import csv
 import hashlib
 import importlib.util
 import json
+import logging
+import os
+import platform
 import shutil
 import statistics
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import common
 import train
 import pandas as pd
+import pyspark
 
 
 BASE = Path(__file__).resolve().parent.parent
@@ -36,7 +42,62 @@ DEFAULT_HIPERPARAMETROS = (
     BASE / "data" / "preprocessed" / "grid_hyperparams" / "hiperparametros.json"
 )
 DEFAULT_OUT = BASE / "results"
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 4
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
+
+
+def _preparar_fold_con_log(spark, ronda, escala, *, fase, iteracion, celda):
+    inicio = time.perf_counter()
+    LOGGER.info(
+        "inicio_preparacion_fold fase=%s iteracion=%s celda=%s fold=%s",
+        fase, iteracion, celda, ronda.name,
+    )
+    try:
+        fold = train.preparar_fold_features(
+            spark, ronda, escala
+        )
+    except Exception as error:
+        LOGGER.error(
+            "fallo_preparacion_fold fase=%s iteracion=%s celda=%s fold=%s "
+            "error_tipo=%s error=%s",
+            fase, iteracion, celda, ronda.name,
+            type(error).__name__, error,
+        )
+        raise
+    LOGGER.info(
+        "fin_preparacion_fold fase=%s iteracion=%s celda=%s fold=%s duracion_s=%.1f",
+        fase, iteracion, celda, ronda.name, time.perf_counter() - inicio,
+    )
+    return fold
+
+
+def _evaluar_fold_con_log(fold, modelo, params, escala, *,
+                          fase, iteracion, celda, ronda, hiperparametro=None):
+    inicio = time.perf_counter()
+    LOGGER.info(
+        "inicio_entrenamiento fase=%s iteracion=%s celda=%s fold=%s modelo=%s "
+        "hiperparametro=%s params=%s",
+        fase, iteracion, celda, ronda, modelo,
+        hiperparametro or "-", params,
+    )
+    try:
+        metricas = train.evaluar_features(fold, modelo, params, escala)
+    except Exception as error:
+        LOGGER.error(
+            "fallo_entrenamiento fase=%s iteracion=%s celda=%s fold=%s modelo=%s "
+            "hiperparametro=%s error_tipo=%s error=%s",
+            fase, iteracion, celda, ronda, modelo, hiperparametro or "-",
+            type(error).__name__, error,
+        )
+        raise
+    LOGGER.info(
+        "fin_entrenamiento fase=%s iteracion=%s celda=%s fold=%s modelo=%s "
+        "hiperparametro=%s duracion_s=%.1f",
+        fase, iteracion, celda, ronda, modelo, hiperparametro or "-",
+        time.perf_counter() - inicio,
+    )
+    return metricas
 
 
 def _args(argv=None):
@@ -59,13 +120,8 @@ def _args(argv=None):
                         help="celdas de preprocesamiento a usar (smoke tests)")
     parser.add_argument("--rondas", nargs="+", type=int, default=None,
                         help="rondas a usar, 1..5 (smoke tests)")
-    parser.add_argument("--limite-filas", type=int, default=None,
-                        help="limita filas de train/val por ronda (smoke tests)")
-    estado = parser.add_mutually_exclusive_group()
-    estado.add_argument("--reanudar", action="store_true",
-                        help="reutiliza checkpoints completados")
-    estado.add_argument("--forzar", action="store_true",
-                        help="ignora y reemplaza checkpoints")
+    parser.add_argument("--reanudar", action="store_true",
+                        help="conserva checkpoints completados compatibles")
     parser.add_argument("--no-escala", action="store_true")
     parser.add_argument("--master", default="local[*]")
     parser.add_argument("--driver-memory")
@@ -95,7 +151,7 @@ def _firma(args, params_base: dict, params_grid: dict, escala: bool) -> str:
         "metadatos": _hash_archivo(args.base / "metadatos.json"),
         "manifiesto": _hash_archivo(args.grid / "manifiesto.csv"),
         "escala": escala,
-        "limite_filas": args.limite_filas,
+        "paralelismo_ovr": common.PARALELISMO_OVR,
     }
     return hashlib.sha1(
         json.dumps(contenido, sort_keys=True).encode("utf-8")
@@ -183,18 +239,6 @@ def _rondas(celda_dir: Path, seleccion: list[int] | None = None):
     if any(indice < 1 or indice > len(rondas) for indice in indices):
         raise ValueError(f"rondas inválidas: {indices}; deben estar entre 1 y {len(rondas)}")
     return [rondas[indice - 1] for indice in indices]
-
-
-def _cargar_celda_features(spark, rondas, escala, limite_filas=None):
-    return [
-        train.preparar_fold_features(spark, ronda, escala, limite_filas=limite_filas)
-        for ronda in rondas
-    ]
-
-
-def _liberar_celda_features(folds):
-    for fold in folds:
-        fold.liberar()
 
 
 def _resumen(filas):
@@ -296,29 +340,35 @@ def _fases_a_limpiar(fases: set[int]) -> set[int]:
     return limpiar
 
 
-def _preparar_checkpoints(root: Path, firma: str, fases, *, reanudar, forzar):
+def _preparar_checkpoints(root: Path, firma: str, fases, *, reanudar):
     ruta_firma = root / "firma.json"
     firma_anterior = None
     if ruta_firma.exists():
         firma_anterior = json.loads(ruta_firma.read_text(encoding="utf-8")).get("firma")
-    if forzar:
-        a_limpiar = {1, 2, 3} if firma_anterior != firma else _fases_a_limpiar(set(fases))
-        for fase in a_limpiar:
-            shutil.rmtree(root / f"fase_{fase}", ignore_errors=True)
     existentes = root.exists() and any(p.is_file() for p in root.rglob("*"))
-    if existentes and not reanudar and not forzar:
-        raise ValueError(f"{root} ya contiene checkpoints; use --reanudar o --forzar")
-    if existentes and reanudar:
-        if firma_anterior is None:
-            raise ValueError(f"{ruta_firma} no existe; no se puede reanudar sin firma")
-        if firma_anterior != firma:
+    fases_a_limpiar = _fases_a_limpiar(set(fases))
+    if reanudar:
+        if existentes:
+            if firma_anterior is None:
+                raise ValueError(f"{ruta_firma} no existe; no se puede reanudar sin firma")
+            if firma_anterior != firma:
+                raise ValueError(
+                    "la firma de checkpoints no coincide con los datos o hiperparámetros "
+                    "actuales; ejecute las fases desde la primera fase requerida sin "
+                    "--reanudar"
+                )
+    else:
+        fases_prerequisito = set(range(1, min(fases_a_limpiar)))
+        if existentes and firma_anterior != firma and fases_prerequisito:
             raise ValueError(
-                "la firma de checkpoints no coincide con los datos o hiperparámetros "
-                "actuales; use --forzar"
+                "cambiaron los datos o hiperparámetros y los checkpoints de las fases "
+                f"prerrequisito {sorted(fases_prerequisito)} podrían ser incompatibles; "
+                "ejecute también esas fases antes de continuar"
             )
+        for fase in fases_a_limpiar:
+            shutil.rmtree(root / f"fase_{fase}", ignore_errors=True)
     root.mkdir(parents=True, exist_ok=True)
-    if not existentes or forzar:
-        _escribir_json(ruta_firma, {"firma": firma})
+    _escribir_json(ruta_firma, {"firma": firma})
 
 
 def _cargar_filas_fase1(root: Path, modelos) -> list[dict]:
@@ -358,10 +408,10 @@ def _params_fase1(args, params_base: dict, iteracion: int) -> dict:
 
 
 def _fase1(spark, grid, modelos, params_base, destino, escala, *,
-           checkpoint_root, iteracion, celdas=None, rondas_sel=None,
-           limite_filas=None):
+           checkpoint_root, iteracion, celdas=None, rondas_sel=None):
     filas_fold, resumentes = [], []
     for celda in _celdas(grid, celdas):
+        inicio_celda = time.perf_counter()
         rondas = _rondas(celda, rondas_sel)
         filas_celda, pendientes = [], []
         for modelo in modelos:
@@ -375,32 +425,62 @@ def _fase1(spark, grid, modelos, params_base, destino, escala, *,
                 if contenido is None:
                     pendientes.append((modelo, ronda.name, params))
                 else:
+                    LOGGER.info(
+                        "checkpoint_reutilizado fase=1 iteracion=%s celda=%s "
+                        "fold=%s modelo=%s",
+                        iteracion, celda.name, ronda.name, modelo,
+                    )
                     filas_celda.append(_fila_checkpoint(contenido))
         if pendientes:
-            print(f"\n=== CELDA {celda.name}: {len(pendientes)} unidades pendientes ===")
-            folds = _cargar_celda_features(spark, rondas, escala, limite_filas)
-            fold_por_ronda = {ronda.name: fold for ronda, fold in zip(rondas, folds)}
-            try:
-                for modelo, ronda, params in pendientes:
-                    print(f"  >>> fase 1 {modelo} {celda.name}/{ronda} params={params}")
-                    metricas = train.evaluar_features(
-                        fold_por_ronda[ronda], modelo, params, escala
+            LOGGER.info(
+                "inicio_celda fase=1 iteracion=%s celda=%s unidades_pendientes=%s",
+                iteracion, celda.name, len(pendientes),
+            )
+            for ronda in rondas:
+                pendientes_ronda = [
+                    pendiente for pendiente in pendientes if pendiente[1] == ronda.name
+                ]
+                if not pendientes_ronda:
+                    continue
+                fold = _preparar_fold_con_log(
+                    spark, ronda, escala,
+                    fase=1, iteracion=iteracion, celda=celda.name,
+                )
+                fold_completado = False
+                try:
+                    for modelo, ronda_nombre, params in pendientes_ronda:
+                        metricas = _evaluar_fold_con_log(
+                            fold, modelo, params, escala,
+                            fase=1, iteracion=iteracion, celda=celda.name,
+                            ronda=ronda_nombre,
+                        )
+                        ruta = _ruta_fase1(
+                            checkpoint_root, celda.name, modelo, ronda_nombre
+                        )
+                        _escribir_checkpoint(
+                            ruta, iteracion=iteracion, fase=1, modelo=modelo,
+                            celda=celda.name, ronda=ronda_nombre, params=params,
+                            metricas=metricas,
+                        )
+                        filas_celda.append({
+                            "modelo": modelo, "celda": celda.name,
+                            "ronda": ronda_nombre,
+                            "params": _params_key(params), "hiperparametro": "",
+                            "reutilizado_fase_1": False, **metricas,
+                        })
+                    fold_completado = True
+                finally:
+                    fold.liberar()
+                    LOGGER.info(
+                        "fin_fold fase=1 iteracion=%s celda=%s fold=%s estado=%s",
+                        iteracion, celda.name, ronda.name,
+                        "completado" if fold_completado else "fallido",
                     )
-                    ruta = _ruta_fase1(checkpoint_root, celda.name, modelo, ronda)
-                    _escribir_checkpoint(
-                        ruta, iteracion=iteracion, fase=1, modelo=modelo,
-                        celda=celda.name, ronda=ronda, params=params,
-                        metricas=metricas,
-                    )
-                    filas_celda.append({
-                        "modelo": modelo, "celda": celda.name, "ronda": ronda,
-                        "params": _params_key(params), "hiperparametro": "",
-                        "reutilizado_fase_1": False, **metricas,
-                    })
-            finally:
-                _liberar_celda_features(folds)
         else:
-            print(f"\n=== CELDA {celda.name}: completa, se reutiliza ===")
+            LOGGER.info(
+                "inicio_celda fase=1 iteracion=%s celda=%s unidades_pendientes=0",
+                iteracion, celda.name,
+            )
         filas_celda.sort(key=lambda fila: (fila["modelo"], int(fila["ronda"][1:])))
         for modelo in modelos:
             parciales = [fila for fila in filas_celda if fila["modelo"] == modelo]
@@ -416,6 +496,10 @@ def _fase1(spark, grid, modelos, params_base, destino, escala, *,
                 **_resumen(parciales),
             })
             filas_fold.extend(parciales)
+        LOGGER.info(
+            "fin_celda fase=1 iteracion=%s celda=%s duracion_s=%.1f",
+            iteracion, celda.name, time.perf_counter() - inicio_celda,
+        )
     _escribir_csv(destino / "resultado_por_fold.csv", filas_fold)
     _escribir_csv(destino / "resumen_general.csv", resumentes)
     return {
@@ -428,13 +512,14 @@ def _fase1(spark, grid, modelos, params_base, destino, escala, *,
 
 
 def _fase2(spark, grid, modelos, ganadores, fase1_filas, params_grid, destino, escala, *,
-           checkpoint_root, iteracion, rondas_sel=None, limite_filas=None):
+           checkpoint_root, iteracion, rondas_sel=None):
     filas_fold, resumentes = [], []
     por_celda: dict[str, list[str]] = {}
     for modelo in modelos:
         por_celda.setdefault(ganadores[modelo]["celda"], []).append(modelo)
 
     for celda_nombre in sorted(por_celda):
+        inicio_celda = time.perf_counter()
         celda = grid / celda_nombre
         rondas = _rondas(celda, rondas_sel)
         nombres_ronda = {ronda.name for ronda in rondas}
@@ -479,39 +564,64 @@ def _fase2(spark, grid, modelos, ganadores, fase1_filas, params_grid, destino, e
                     if contenido is None:
                         pendientes.append((modelo, params, etiqueta, ronda.name))
                     else:
+                        LOGGER.info(
+                            "checkpoint_reutilizado fase=2 iteracion=%s celda=%s "
+                            "fold=%s modelo=%s hiperparametro=%s",
+                            iteracion, celda_nombre, ronda.name, modelo, etiqueta,
+                        )
                         filas_config.append(
                             _fila_checkpoint(contenido, hiperparametro=etiqueta)
                         )
         if pendientes:
-            print(f"\n=== FASE 2 {celda_nombre}: {len(pendientes)} unidades pendientes ===")
-            folds = _cargar_celda_features(spark, rondas, escala, limite_filas)
-            fold_por_ronda = {ronda.name: fold for ronda, fold in zip(rondas, folds)}
-            try:
-                for modelo, params, etiqueta, ronda in pendientes:
-                    print(
-                        f"  >>> fase 2 {modelo} {celda_nombre}/{ronda} "
-                        f"{etiqueta} params={params}"
+            LOGGER.info(
+                "inicio_celda fase=2 iteracion=%s celda=%s unidades_pendientes=%s",
+                iteracion, celda_nombre, len(pendientes),
+            )
+            for ronda in rondas:
+                pendientes_ronda = [
+                    pendiente for pendiente in pendientes if pendiente[3] == ronda.name
+                ]
+                if not pendientes_ronda:
+                    continue
+                fold = _preparar_fold_con_log(
+                    spark, ronda, escala,
+                    fase=2, iteracion=iteracion, celda=celda_nombre,
+                )
+                fold_completado = False
+                try:
+                    for modelo, params, etiqueta, ronda_nombre in pendientes_ronda:
+                        metricas = _evaluar_fold_con_log(
+                            fold, modelo, params, escala,
+                            fase=2, iteracion=iteracion, celda=celda_nombre,
+                            ronda=ronda_nombre, hiperparametro=etiqueta,
+                        )
+                        ruta = _ruta_fase2(
+                            checkpoint_root, modelo, celda_nombre, params, ronda_nombre
+                        )
+                        _escribir_checkpoint(
+                            ruta, iteracion=iteracion, fase=2, modelo=modelo,
+                            celda=celda_nombre, ronda=ronda_nombre, params=params,
+                            metricas=metricas,
+                        )
+                        filas_config.append({
+                            "modelo": modelo, "celda": celda_nombre,
+                            "ronda": ronda_nombre,
+                            "params": _params_key(params), "hiperparametro": etiqueta,
+                            "reutilizado_fase_1": False, **metricas,
+                        })
+                    fold_completado = True
+                finally:
+                    fold.liberar()
+                    LOGGER.info(
+                        "fin_fold fase=2 iteracion=%s celda=%s fold=%s estado=%s",
+                        iteracion, celda_nombre, ronda.name,
+                        "completado" if fold_completado else "fallido",
                     )
-                    metricas = train.evaluar_features(
-                        fold_por_ronda[ronda], modelo, params, escala
-                    )
-                    ruta = _ruta_fase2(
-                        checkpoint_root, modelo, celda_nombre, params, ronda
-                    )
-                    _escribir_checkpoint(
-                        ruta, iteracion=iteracion, fase=2, modelo=modelo,
-                        celda=celda_nombre, ronda=ronda, params=params,
-                        metricas=metricas,
-                    )
-                    filas_config.append({
-                        "modelo": modelo, "celda": celda_nombre, "ronda": ronda,
-                        "params": _params_key(params), "hiperparametro": etiqueta,
-                        "reutilizado_fase_1": False, **metricas,
-                    })
-            finally:
-                _liberar_celda_features(folds)
         else:
-            print(f"\n=== FASE 2 {celda_nombre}: completa, se reutiliza ===")
+            LOGGER.info(
+                "inicio_celda fase=2 iteracion=%s celda=%s unidades_pendientes=0",
+                iteracion, celda_nombre,
+            )
 
         for modelo in modelos_celda:
             filas_fold.extend(base_por_modelo[modelo])
@@ -544,6 +654,10 @@ def _fase2(spark, grid, modelos, ganadores, fase1_filas, params_grid, destino, e
                     "reutilizado_fase_1": False,
                     **_resumen(parciales),
                 })
+        LOGGER.info(
+            "fin_celda fase=2 iteracion=%s celda=%s duracion_s=%.1f",
+            iteracion, celda_nombre, time.perf_counter() - inicio_celda,
+        )
     _escribir_csv(destino / "resultado_por_fold.csv", filas_fold)
     _escribir_csv(destino / "resumen_general.csv", resumentes)
     return {
@@ -586,7 +700,7 @@ def _materializar_final(base, celda, destino):
     ]
     train_df = pd.concat(train_parts, ignore_index=True)
     test_df = pd.read_parquet(base / "test.parquet")
-    params, train_t = pre.fit_transform(train_df, pre.CELDAS[celda])
+    params, train_t, _ = pre.fit_transform(train_df, pre.CELDAS[celda])
     test_t = pre.transform(test_df, pre.CELDAS[celda], params)
     destino.mkdir(parents=True, exist_ok=True)
     train_path = destino / "train.parquet"
@@ -609,25 +723,44 @@ def _fase3(spark, base, ganadores, modelos, out, escala, *,
             contenido = json.loads(ruta_checkpoint.read_text(encoding="utf-8"))
             if contenido.get("params") != params or contenido.get("celda") != ganador["celda"]:
                 raise ValueError(
-                    f"checkpoint de fase 3 incompatible para {modelo}; use --forzar"
+                    f"checkpoint de fase 3 incompatible para {modelo}; "
+                    "ejecute sin --reanudar para recalcularlo"
                 )
             if (destino / "metricas.json").exists() and (destino / "modelo").exists():
-                print(f"\n=== FASE 3: {modelo} completado, se reutiliza ===")
+                LOGGER.info("fin_fase_3 modelo=%s estado=reutilizado", modelo)
                 continue
-        print(f"\n=== FASE 3: {modelo} ({ganador['celda']}) ===")
-        entradas_train = destino / "_inputs"
-        train_path, test_path = _materializar_final(
-            base, ganador["celda"], entradas_train
+        inicio_modelo = time.perf_counter()
+        LOGGER.info(
+            "inicio_entrenamiento_final iteracion=%s modelo=%s celda=%s",
+            iteracion, modelo, ganador["celda"],
         )
-        metricas = train.correr_final(
-            spark, train_path, test_path,
-            algo=modelo, params=params, escala=escala,
-            destino=destino, clases=clases,
-        )
+        try:
+            entradas_train = destino / "_inputs"
+            train_path, test_path = _materializar_final(
+                base, ganador["celda"], entradas_train
+            )
+            metricas = train.correr_final(
+                spark, train_path, test_path,
+                algo=modelo, params=params, escala=escala,
+                destino=destino, clases=clases,
+            )
+        except Exception as error:
+            LOGGER.error(
+                "fallo_entrenamiento_final iteracion=%s modelo=%s celda=%s "
+                "error_tipo=%s error=%s",
+                iteracion, modelo, ganador["celda"],
+                type(error).__name__, error,
+            )
+            raise
         _escribir_checkpoint(
             ruta_checkpoint, iteracion=iteracion, fase=3, modelo=modelo,
             celda=ganador["celda"], ronda="final", params=params,
             metricas=metricas,
+        )
+        LOGGER.info(
+            "fin_entrenamiento_final iteracion=%s modelo=%s celda=%s duracion_s=%.1f",
+            iteracion, modelo, ganador["celda"],
+            time.perf_counter() - inicio_modelo,
         )
 
 
@@ -642,10 +775,37 @@ def _iteraciones(args):
 
 
 def main(argv=None):
+    argumentos_recibidos = list(sys.argv[1:] if argv is None else argv)
     args = _args(argv)
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    LOGGER.setLevel(logging.INFO)
     fases = set(args.fase)
     params_base, params_grid = _leer_hiperparametros(args.hiperparametros)
-    print(f"Hiperparámetros: {args.hiperparametros}")
+    LOGGER.info(
+        "comando argv=%s",
+        [sys.argv[0], *argumentos_recibidos],
+    )
+    LOGGER.info("hiperparametros=%s", args.hiperparametros)
+    LOGGER.info(
+        "configuracion_spark master=%s driver_memory_arg=%s shuffle_partitions=%s "
+        "paralelismo_ovr=%s "
+        "fases=%s iteracion=%s iteraciones=%s "
+        "modelos=%s celdas=%s rondas=%s reanudar=%s no_escala=%s",
+        args.master, args.driver_memory or "default",
+        args.shuffle_partitions, common.PARALELISMO_OVR,
+        sorted(fases), args.iteracion, args.iteraciones, args.modelos,
+        args.celdas or "todas", args.rondas or "todas",
+        args.reanudar, args.no_escala,
+    )
+    LOGGER.info(
+        "entorno python=%s pyspark=%s PYSPARK_SUBMIT_ARGS=%s",
+        platform.python_version(), pyspark.__version__,
+        os.environ.get("PYSPARK_SUBMIT_ARGS", "no definido"),
+    )
     escala = not args.no_escala
     firma = _firma(args, params_base, params_grid, escala)
     iteraciones = _iteraciones(args)
@@ -665,24 +825,28 @@ def main(argv=None):
             if not fases_iter:
                 continue
             _preparar_checkpoints(
-                checkpoint_root, firma, fases_iter,
-                reanudar=args.reanudar, forzar=args.forzar,
+                checkpoint_root, firma, fases_iter, reanudar=args.reanudar,
             )
 
             if 1 in fases_iter:
-                print(f"\n=== ITERACION {iteracion}/{ultima}: FASE 1 ===")
+                inicio_fase = time.perf_counter()
+                LOGGER.info("inicio_fase iteracion=%s fase=1", iteracion)
                 params_fase1 = _params_fase1(args, params_base, iteracion)
                 fase1, _ = _fase1(
                     spark, args.grid, args.modelos, params_fase1,
                     raiz / "fase_1", escala,
                     checkpoint_root=checkpoint_root, iteracion=iteracion,
                     celdas=args.celdas, rondas_sel=args.rondas,
-                    limite_filas=args.limite_filas,
                 )
                 _escribir_json(raiz / "fase_1" / "ganadores.json", fase1)
+                LOGGER.info(
+                    "fin_fase iteracion=%s fase=1 duracion_s=%.1f",
+                    iteracion, time.perf_counter() - inicio_fase,
+                )
 
             if 2 in fases_iter:
-                print(f"\n=== ITERACION {iteracion}/{ultima}: FASE 2 ===")
+                inicio_fase = time.perf_counter()
+                LOGGER.info("inicio_fase iteracion=%s fase=2", iteracion)
                 ganadores_fase1 = _cargar_ganadores(
                     raiz / "fase_1" / "ganadores.json"
                 )
@@ -691,12 +855,17 @@ def main(argv=None):
                     spark, args.grid, args.modelos, ganadores_fase1,
                     fase1_filas, params_grid, raiz / "fase_2", escala,
                     checkpoint_root=checkpoint_root, iteracion=iteracion,
-                    rondas_sel=args.rondas, limite_filas=args.limite_filas,
+                    rondas_sel=args.rondas,
                 )
                 _escribir_json(raiz / "fase_2" / "ganadores.json", ganadores)
+                LOGGER.info(
+                    "fin_fase iteracion=%s fase=2 duracion_s=%.1f",
+                    iteracion, time.perf_counter() - inicio_fase,
+                )
 
             if 3 in fases_iter and iteracion == ultima:
-                print(f"\n=== ITERACION {iteracion}/{ultima}: FASE 3 ===")
+                inicio_fase = time.perf_counter()
+                LOGGER.info("inicio_fase iteracion=%s fase=3", iteracion)
                 ganadores = _cargar_ganadores(
                     raiz / "fase_2" / "ganadores.json"
                 )
@@ -705,7 +874,13 @@ def main(argv=None):
                     checkpoint_root=checkpoint_root, iteracion=iteracion,
                     reanudar=args.reanudar,
                 )
+                LOGGER.info(
+                    "fin_fase iteracion=%s fase=3 duracion_s=%.1f",
+                    iteracion, time.perf_counter() - inicio_fase,
+                )
+        LOGGER.info("ejecucion_completada")
     finally:
+        LOGGER.info("cierre_spark")
         spark.stop()
 
 

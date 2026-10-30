@@ -7,10 +7,8 @@
 #     sbatch slurm/02_kfoldcv.slurm
 #   FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
 #   FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
-#   FASES="1 2 3" ITERACION=1 FORZAR=1 sbatch slurm/02_kfoldcv.slurm
 #   FASES="1" ITERACION=1 CELDA=G03 sbatch slurm/02_kfoldcv.slurm
 #   FASES="1" ITERACION=1 MODELOS="logreg rf" RONDAS="1 3" sbatch slurm/02_kfoldcv.slurm
-#   FASES="1" ITERACION=1 LIMITE_FILAS=5000 sbatch slurm/02_kfoldcv.slurm
 
 #SBATCH --job-name=unsw-kfold
 #SBATCH --partition=standard
@@ -33,7 +31,6 @@ ITERACIONES="${ITERACIONES:-1}"
 ITERACION="${ITERACION:-}"
 FASES="${FASES:-1 2 3}"
 REANUDAR="${REANUDAR:-0}"
-FORZAR="${FORZAR:-0}"
 SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
 # Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
 # al proceso Python y al overhead de Spark.
@@ -41,7 +38,6 @@ DRIVER_MEMORY="${DRIVER_MEMORY:-72g}"
 CELDA="${CELDA:-}"
 MODELOS="${MODELOS:-}"
 RONDAS="${RONDAS:-}"
-LIMITE_FILAS="${LIMITE_FILAS:-}"
 
 cd "$PROJECT_DIR"
 echo "Proyecto: $PROJECT_DIR"
@@ -70,7 +66,7 @@ required_files=(
 for fase in "${fases_array[@]}"; do
     case "$fase" in
         1|2)
-            for celda in {00..09}; do
+            for celda in {00..03}; do
                 for ronda in {1..5}; do
                     required_files+=(
                         "data/preprocessed/grid_preprocess/G$celda/r$ronda/train.parquet"
@@ -107,7 +103,7 @@ fi
 echo "Iniciando k-fold CV en $(hostname)"
 echo "Fases: $FASES"
 echo "Iteraciones: ${ITERACION:-$ITERACIONES}"
-echo "Reanudar: $REANUDAR · Forzar: $FORZAR"
+echo "Reanudar: $REANUDAR"
 echo "Driver memory: $DRIVER_MEMORY"
 
 args=(--fase "${fases_array[@]}" --driver-memory "$DRIVER_MEMORY"
@@ -123,17 +119,12 @@ if [[ -n "$RONDAS" ]]; then
     read -r -a rondas_array <<< "$RONDAS"
     args+=(--rondas "${rondas_array[@]}")
 fi
-if [[ -n "$LIMITE_FILAS" ]]; then
-    args+=(--limite-filas "$LIMITE_FILAS")
-fi
 if [[ -n "$ITERACION" ]]; then
     args+=(--iteracion "$ITERACION")
 else
     args+=(--iteraciones "$ITERACIONES")
 fi
-if [[ "$FORZAR" == "1" ]]; then
-    args+=(--forzar)
-elif [[ "$REANUDAR" == "1" ]]; then
+if [[ "$REANUDAR" == "1" ]]; then
     args+=(--reanudar)
 fi
 

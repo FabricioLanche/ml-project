@@ -110,6 +110,22 @@ necesita residir íntegro en memoria.
    python3 notebooks/pre-process.py
    ```
 
+   Por defecto, cada `train.parquet` de la grilla conserva hasta `100000` filas por
+   categoría, seleccionadas de forma reproducible (semilla 42). Las validaciones y `base/`
+   no se submuestrean. En cada ronda las celdas parten de la misma muestra y luego
+   aplican o no deduplicación. Los conteos de grupos y duplicados por clase se registran
+   en `grid_preprocess/estadisticas_muestreo.csv`; por eso las celdas deduplicadas pueden
+   quedar por debajo del límite. Para cambiar el límite, regenere los artefactos; use `0`
+   para desactivarlo:
+
+   ```bash
+   python3 notebooks/pre-process.py --limite-por-categoria 50000
+   ```
+
+   La selección de columnas para `log1p` se calcula con el fold-train completo antes del
+   muestreo y se comparte entre las celdas de cada ronda. La validación no interviene; en
+   la fase 3 se vuelve a seleccionar usando todo el 85 % de entrenamiento.
+
    La base y las variaciones de hiperparámetros se editan en
    `notebooks/hiperparametros.py`; el preprocesamiento las materializa en
    `grid_hyperparams/hiperparametros.json`.
@@ -193,14 +209,17 @@ FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
 FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
 
 # Repetir una fase concreta
-FASES="1 2" ITERACION=1 FORZAR=1 sbatch slurm/02_kfoldcv.slurm
+FASES="1 2" ITERACION=1 sbatch slurm/02_kfoldcv.slurm
 
 # Evaluación final de la iteración 1
 FASES="3" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
 ```
 
-`REANUDAR=1` reutiliza lo completado; `FORZAR=1` lo ignora. Sin ninguno de los dos,
-el job falla si ya hay checkpoints, para evitar mezclar corridas.
+Por defecto, cada job recalcula las fases solicitadas y las posteriores que dependan
+de ellas, limitado a la iteración seleccionada. `REANUDAR=1` conserva y reutiliza
+checkpoints compatibles de un job interrumpido; requiere que datos y configuración
+coincidan. Si se modificó la configuración, vuelva a ejecutar desde la fase
+prerrequisito sin `REANUDAR=1`.
 
 `01_preprocess.slurm` crea `data/preprocessed/base/`, `grid_preprocess/` y
 `grid_hyperparams/`. `02_kfoldcv.slurm` ejecuta las fases 1 y 2 por modelo y la
@@ -227,6 +246,11 @@ Para una prueba corta de recursos y persistencia se puede usar el benchmark de
 `slurm/test/`, que limita filas y ejecuta una sola celda y un solo fold. No reemplaza
 la ejecución completa, pero permite comparar configuraciones sin comprometer un job de
 ocho horas.
+
+El límite por categoría se configura al generar los datos (`LIMITE_POR_CATEGORIA` para
+`slurm/01_preprocess.slurm` o `--limite-por-categoria` en `pre-process.py`). Los jobs de
+entrenamiento consumen los Parquet existentes y no admiten ese argumento. Para cambiar el
+límite, vuelva a ejecutar el preprocesamiento antes del entrenamiento.
 
 ## Dataset
 

@@ -1,8 +1,7 @@
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 import common
-
 
 # ===========================================================================
 # Motor: sesión de Spark (parámetros planos; el llamador es dueño de la sesión)
@@ -16,6 +15,7 @@ def construir_spark(master="local[*]", *, driver_memory=None, shuffle_partitions
         SparkSession.builder.appName(app_name)
         .master(master)
         .config("spark.sql.shuffle.partitions", str(shuffle_partitions))
+        .config("spark.ui.showConsoleProgress", "false")
     )
     if driver_memory:
         builder = builder.config("spark.driver.memory", driver_memory)
@@ -38,19 +38,16 @@ class FoldFeatures:
     modelo: object
 
     def liberar(self) -> None:
-        self.train.unpersist()
-        self.val.unpersist()
+        self.train.unpersist(blocking=True)
+        self.val.unpersist(blocking=True)
 
 
-def preparar_fold_features(spark, ronda, escala=True, limite_filas=None) -> FoldFeatures:
-    """Lee un fold y ajusta una sola vez sus indexadores, encoder y scaler."""
+def preparar_fold_features(spark, ronda, escala=True) -> FoldFeatures:
+    """Lee los Parquet materializados y ajusta sus transformaciones."""
     from pyspark import StorageLevel
 
     train_df = common.cargar_parquet(spark, ronda / "train.parquet")
     val_df = common.cargar_parquet(spark, ronda / "val.parquet")
-    if limite_filas is not None:
-        train_df = train_df.limit(limite_filas)
-        val_df = val_df.limit(limite_filas)
     pipeline = common.construir_pipeline_caracteristicas(train_df, escala)
     modelo = pipeline.fit(train_df)
     train_features = modelo.transform(train_df).persist(StorageLevel.MEMORY_AND_DISK)

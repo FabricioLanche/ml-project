@@ -25,6 +25,7 @@ from pyspark.sql import functions as F
 CONTROL = ("label", "attack_cat", "es_duplicado")
 
 ALGOS = ("logreg", "rf", "svm")
+PARALELISMO_OVR = 5
 
 try:
     from hiperparametros import BASE as PARAMS_POR_DEFECTO
@@ -79,7 +80,7 @@ def crear_clasificador(algo: str, params: dict | None = None,
     # OneVsRest para las 10 clases (10 modelos binarios por fold).
     base = LinearSVC(**data, **hiperparametros_default)
     return OneVsRest(classifier=base, featuresCol=col_features, labelCol="label",
-                     predictionCol="prediction")
+                     predictionCol="prediction", parallelism=PARALELISMO_OVR)
 
 
 def construir_pipeline_caracteristicas(df: DataFrame, escala: bool = True) -> Pipeline:

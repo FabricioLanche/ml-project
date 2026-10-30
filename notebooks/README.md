@@ -34,7 +34,7 @@ independiente para `logreg`, `rf` y `svm`:
 python notebooks/k-foldCV.py --iteraciones 1 --driver-memory 4g
 ```
 
-La fase 1 compara las diez celdas con los parámetros base. La fase 2 busca las
+La fase 1 compara las cuatro celdas con los parámetros base. La fase 2 busca las
 variaciones sobre la celda ganadora de cada modelo. La base y la grilla se leen por
 defecto de `data/preprocessed/grid_hyperparams/hiperparametros.json`, generado por
 `pre-process.py`; `--hiperparametros` (alias `--params`) permite usar otro JSON. El
@@ -58,6 +58,17 @@ contiene `base` y `grilla`; esta última se genera como producto cartesiano expl
 Cada variación se fusiona sobre `base`, así que solo declara los valores que cambia.
 Los valores se editan en `notebooks/hiperparametros.py`.
 
+El preprocesamiento compara cuatro recetas: `G00` (base), `G01` (sin `ct_*`),
+`G02` (deduplicado) y `G03` (deduplicado + sin `ct_*`). En todas se mantienen los
+puertos agrupados por franja IANA y el `proto` completo, que se codifica con one-hot
+en el pipeline de Spark. Si se modifica esta grilla, vuelve a ejecutar
+`notebooks/pre-process.py` antes de entrenar; el proceso materializa las nuevas celdas
+y elimina las obsoletas. Los checkpoints/resultados de la numeración anterior no
+corresponden a estas recetas y no deben reanudarse ni compararse con la grilla nueva.
+La selección de columnas `log1p` se calcula sobre el fold-train completo de cada ronda,
+antes del submuestreo y del deduplicado, y se comparte entre sus celdas; la validación no
+participa en esa decisión. En fase 3 se recalcula sobre todo el 85 % de entrenamiento.
+
 Cada fold se persiste como checkpoint en `results/iteracion_N/checkpoints/`. Para
 repartir el trabajo entre jobs:
 
@@ -69,12 +80,74 @@ python notebooks/k-foldCV.py --fase 1 --iteracion 1
 python notebooks/k-foldCV.py --fase 2 --iteracion 1 --reanudar
 
 # Repetir una fase concreta
-python notebooks/k-foldCV.py --fase 1 2 --iteracion 1 --forzar
+python notebooks/k-foldCV.py --fase 1 2 --iteracion 1
 ```
 
-`--reanudar` reutiliza checkpoints completados; `--forzar` los ignora. Sin ninguno,
-falla si ya existen checkpoints. `--celdas`, `--rondas` y `--limite-filas` permiten
-smoke tests acotados.
+Por defecto, cada ejecución recalcula los checkpoints de las fases solicitadas y de
+las fases posteriores que dependen de ellas (fase 1 invalida fases 2 y 3; fase 2
+invalida fase 3). La limpieza de checkpoints queda limitada a esa iteración. Usa
+`--reanudar` para conservar y reutilizar checkpoints compatibles de una ejecución
+interrumpida. Al reanudar, el orquestador comprueba que coincidan datos e
+hiperparámetros; si cambian, ejecuta desde la fase prerrequisito necesaria sin
+`--reanudar`. `--celdas` y `--rondas` permiten smoke tests acotados. Las features se
+preparan y liberan fold por fold para limitar el uso de memoria durante las búsquedas.
+
+El orquestador registra eventos con fecha y hora (fases, celdas, preparación de folds
+y comienzo/fin de cada entrenamiento, con duración). Se conserva el nivel `WARN` de
+Spark para mostrar advertencias y errores, pero se desactivan las barras de progreso
+`[Stage ...]` del terminal; la Spark UI web sigue disponible durante la ejecución.
+Al inicio también registra los argumentos recibidos, las opciones efectivas (incluidas
+`--reanudar`, celdas y rondas), versiones de Python/PySpark y `PYSPARK_SUBMIT_ARGS`
+cuando está definida, para contextualizar cada corrida.
+Para guardar juntos los mensajes de Python y Spark en WSL, redirige stderr a stdout y
+usa `tee` con `set -o pipefail`, de modo que el log incluya errores y el código de salida
+refleje también un fallo del entrenamiento.
+
+Para comparar el rendimiento local sobre una misma celda y ronda, ejecuta
+`benchmark-local.py`. Corre las configuraciones en serie y en procesos Spark separados,
+sin `--reanudar`; usa los Parquet ya materializados y deja los resultados aislados por
+configuración para no tocar los experimentos normales. Por defecto mantiene fijos el fold
+`G00/r1`, los modelos y las 32 particiones shuffle, y ejecuta `local[*]` con
+`--driver-memory 6g`:
+
+```bash
+python3 -u notebooks/benchmark-local.py
+```
+
+El benchmark usa los Parquet ya materializados, sin muestrear durante el entrenamiento.
+Para comparar ejecuciones con otro límite por categoría, primero hay que regenerar los
+artefactos desde el preprocesamiento. También se pueden probar varias memorias en
+producto cartesiano con los masters, repetir cada configuración o inspeccionar comandos:
+
+```bash
+python3 -u notebooks/benchmark-local.py --masters 'local[2]' 'local[4]' 'local[*]' \
+  --driver-memories 6g 8g --repeticiones 2
+python3 -u notebooks/benchmark-local.py --dry-run
+```
+
+Cada ejecución genera un log por configuración y `resumen.csv` en una carpeta nueva
+de `logs/benchmark-local-*`. El resumen incluye el tiempo total, el código de salida
+y los tiempos por modelo cuando el entrenamiento los alcanzó. Una configuración fallida
+queda registrada y no impide probar las demás; el script termina con código distinto de
+cero si alguna falló.
+
+El límite de filas por categoría se aplica al materializar cada `train.parquet` de la grilla:
+por defecto se conservan hasta `100000` filas por etiqueta `label`, con muestreo
+reproducible (semilla 42). Las clases con menos filas se conservan completas. Las
+validaciones no se submuestrean y `base/` permanece íntegra para la fase 3. En cada ronda,
+las celdas parten de la misma muestra y luego aplican o no deduplicación; los conteos de
+filas, grupos únicos y proporción duplicada por clase quedan en
+`grid_preprocess/estadisticas_muestreo.csv`, antes y después del deduplicado. Por ello, las
+celdas deduplicadas pueden quedar con menos filas que el límite. El límite se cambia al
+generar los artefactos; `0` lo desactiva:
+
+```bash
+python notebooks/pre-process.py --limite-por-categoria 50000
+LIMITE_POR_CATEGORIA=50000 sbatch slurm/01_preprocess.slurm
+```
+
+El entrenamiento solo consume los Parquet disponibles y no acepta un límite de muestreo.
+Cambiarlo requiere volver a ejecutar el preprocesamiento antes de la búsqueda.
 
 Las salidas se organizan en `results/iteracion_N/fase_1/`, `fase_2/` y
 `results/fase_3/<modelo>/`. En fase 3 se ajusta una única receta de
@@ -113,7 +186,9 @@ Crea y configura la sesión de Spark (AQE habilitado en masters `local*`, log en
    pipeline, por fold. No fitear ningún transformador antes del split de la ronda.
 6. **Agregación y CSV**: `k-foldCV.py` calcula los resúmenes por celda y escribe
    `resultado_por_fold.csv` y `resumen_general.csv` para cada fase.
-7. **Features compartidas por fold**: `preparar_fold_features` ajusta las
+7. **Submuestreo sin fuga**: el límite estratificado se aplica únicamente al train
+   antes de ajustar transformaciones; validation se conserva completo.
+8. **Features compartidas por fold**: `preparar_fold_features` ajusta las
    transformaciones una sola vez por fold; `evaluar_features` reutiliza esas
    features para cada modelo e hiperparámetro.
 
@@ -128,7 +203,7 @@ la usa como fallback:
 |---|---|---|
 | `logreg` | `maxIter=500, regParam=0.0, elasticNetParam=0.0, tol=1e-6, standardization=False, family=multinomial` | LogisticRegression de MLlib |
 | `rf` | `numTrees=100, maxDepth=18, seed=42, minInstancesPerNode=1, maxBins=32, impurity=gini, featureSubsetStrategy=sqrt` | Línea base. `seed` fija el muestreo del bosque para que dos corridas idénticas den métricas idénticas |
-| `svm` | `maxIter=500, regParam=0.0, tol=1e-6, standardization=False` | **Lineal**: MLlib no tiene kernels RBF. Al ser binario, se envuelve en `OneVsRest` (10 modelos binarios por fold). Solo expone `rawPrediction`, no `probability` |
+| `svm` | `maxIter=500, regParam=0.0, tol=1e-6, standardization=False` | **Lineal**: MLlib no tiene kernels RBF. Al ser binario, se envuelve en `OneVsRest` (10 modelos binarios por fold, con `parallelism=5`). Solo expone `rawPrediction`, no `probability` |
 
 Cada configuración se fusiona sobre la base (`{**base, **variacion}`); un parámetro
 inválido produce el `ValueError` nativo del estimador de Spark.
@@ -192,7 +267,7 @@ clasificador. Para clasificar datos nuevos basta:
 from pyspark.ml import PipelineModel
 import common
 
-modelo = PipelineModel.load("results/fase2/G03/rf/modelo")   # o common.cargar_modelo(...)
+modelo = common.cargar_modelo("results/fase_3/rf/modelo")
 nuevos = common.cargar_parquet(spark, "data/preprocessed/base/test.parquet")
 pred = common.seleccionar_predicciones(modelo.transform(nuevos))
 metricas = common.evaluar(pred)

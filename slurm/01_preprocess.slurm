@@ -4,6 +4,7 @@
 #   sbatch --partition=standard slurm/01_preprocess.slurm
 # Opcional:
 #   PROJECT_DIR=/ruta/ml-project CONDA_ENV=ml-unsw sbatch slurm/01_preprocess.slurm
+#   LIMITE_POR_CATEGORIA=50000 sbatch slurm/01_preprocess.slurm
 
 #SBATCH --job-name=unsw-preprocess
 #SBATCH --partition=standard
@@ -21,6 +22,7 @@ set -Eeuo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
+LIMITE_POR_CATEGORIA="${LIMITE_POR_CATEGORIA:-100000}"
 
 cd "$PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
@@ -46,5 +48,7 @@ if [[ ! -d data/raw ]]; then
 fi
 
 echo "Iniciando preprocesamiento en $(hostname)"
-srun --ntasks=1 python notebooks/pre-process.py
+echo "Límite de train por categoría: $LIMITE_POR_CATEGORIA"
+srun --ntasks=1 python notebooks/pre-process.py \
+    --limite-por-categoria "$LIMITE_POR_CATEGORIA"
 echo "Preprocesamiento completado."
