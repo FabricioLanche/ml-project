@@ -110,13 +110,15 @@ necesita residir íntegro en memoria.
    python3 notebooks/pre-process.py
    ```
 
-   Por defecto, cada `train.parquet` de la grilla conserva hasta `100000` filas por
-   categoría, seleccionadas de forma reproducible (semilla 42). Las validaciones y `base/`
-   no se submuestrean. En cada ronda las celdas parten de la misma muestra y luego
-   aplican o no deduplicación. Los conteos de grupos y duplicados por clase se registran
-   en `grid_preprocess/estadisticas_muestreo.csv`; por eso las celdas deduplicadas pueden
-   quedar por debajo del límite. Para cambiar el límite, regenere los artefactos; use `0`
-   para desactivarlo:
+   Las copias exactas de filas originales se eliminan una vez antes del split cronológico;
+   `base/`, validación y test contienen una sola copia por registro. `es_duplicado` conserva
+   una marca para auditar las filas que pertenecían a grupos repetidos en el origen. La
+   grilla cruza conservar/excluir `ct_*` con cuatro recetas: base, cada asimetría por
+   separado y ambas juntas, conservando las variables fuente. Por defecto, cada
+   `train.parquet` conserva
+   hasta `100000` filas únicas por categoría, seleccionadas de forma reproducible (semilla
+   42). Las validaciones y `base/` no se submuestrean. Para cambiar el límite, regenere los
+   artefactos; use `0` para desactivarlo:
 
    ```bash
    python3 notebooks/pre-process.py --limite-por-categoria 50000
@@ -193,10 +195,11 @@ PROJECT_DIR=/ruta/al/ml-project CONDA_ENV=ml-unsw \
   sbatch --dependency=afterok:<JOB_PREPROCESS> slurm/02_kfoldcv.slurm
 ```
 
-Sustituya `<JOB_PREPROCESS>` por el ID devuelto por el primer `sbatch`. Si el preflight
-informa artefactos faltantes para una fase, revise los logs
-`slurm-<JOB_PREPROCESS>-preprocess.out` y `.err`, y confirme la ruta de trabajo impresa
-por ambos jobs.
+Sustituya `<JOB_PREPROCESS>` por el ID devuelto por el primer `sbatch`. Cada script guarda
+stdout y stderr combinados con `tee` en `results/logs/unsw-<tipo>-<JOBID>.log`; Slurm también
+conserva sus archivos `.out` y `.err` en el directorio desde el que se envió el job.
+Si el preflight informa artefactos faltantes, revise esos logs y confirme la ruta de trabajo
+impresa por ambos jobs.
 
 El entrenamiento guarda un checkpoint por fold en
 `results/iteracion_N/checkpoints/`. Para repartir el trabajo en varios jobs:
@@ -228,8 +231,8 @@ evaluación final de la fase 3, leyendo la base y la grilla desde
 
 ```bash
 squeue -u "$USER"
-cat slurm-<jobid>-preprocess.out
-cat slurm-<jobid>-kfold.out
+cat results/logs/unsw-preprocess-<jobid>.log
+cat results/logs/unsw-kfold-<jobid>.log
 ```
 
 Los valores de partición, memoria, tiempo y CPU están declarados en los encabezados

@@ -700,7 +700,7 @@ def _materializar_final(base, celda, destino):
     ]
     train_df = pd.concat(train_parts, ignore_index=True)
     test_df = pd.read_parquet(base / "test.parquet")
-    params, train_t, _ = pre.fit_transform(train_df, pre.CELDAS[celda])
+    params, train_t = pre.fit_transform(train_df, pre.CELDAS[celda])
     test_t = pre.transform(test_df, pre.CELDAS[celda], params)
     destino.mkdir(parents=True, exist_ok=True)
     train_path = destino / "train.parquet"

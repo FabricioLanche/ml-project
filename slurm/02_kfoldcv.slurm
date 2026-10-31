@@ -40,6 +40,12 @@ MODELOS="${MODELOS:-}"
 RONDAS="${RONDAS:-}"
 
 cd "$PROJECT_DIR"
+LOG_DIR="${LOG_DIR:-$PROJECT_DIR/results/logs}"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/${SLURM_JOB_NAME:-unsw-kfold}-${SLURM_JOB_ID:-manual}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "Log unificado: $LOG_FILE"
+
 echo "Proyecto: $PROJECT_DIR"
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
 # usa `set -u`.
@@ -66,7 +72,7 @@ required_files=(
 for fase in "${fases_array[@]}"; do
     case "$fase" in
         1|2)
-            for celda in {00..03}; do
+            for celda in {00..07}; do
                 for ronda in {1..5}; do
                     required_files+=(
                         "data/preprocessed/grid_preprocess/G$celda/r$ronda/train.parquet"
@@ -96,7 +102,7 @@ if (( ${#missing_files[@]} > 0 )); then
     echo "ERROR: faltan artefactos de preprocesamiento en '$PROJECT_DIR':" >&2
     printf '  - %s\n' "${missing_files[@]}" >&2
     echo "Artefactos requeridos para FASES='$FASES'. La fase 1 necesita la rejilla materializada; la fase 3 necesita base/." >&2
-    echo "Revise los logs slurm-<JOB_PREPROCESS>-preprocess.out y .err, y el estado con: sacct -j <JOB_PREPROCESS> --format=JobID,State,ExitCode" >&2
+    echo "Revise results/logs/unsw-preprocess-<JOB_PREPROCESS>.log y los archivos Slurm .out/.err, y el estado con: sacct -j <JOB_PREPROCESS> --format=JobID,State,ExitCode" >&2
     exit 1
 fi
 

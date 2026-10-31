@@ -34,7 +34,7 @@ independiente para `logreg`, `rf` y `svm`:
 python notebooks/k-foldCV.py --iteraciones 1 --driver-memory 4g
 ```
 
-La fase 1 compara las cuatro celdas con los parámetros base. La fase 2 busca las
+La fase 1 compara las dos celdas con los parámetros base. La fase 2 busca las
 variaciones sobre la celda ganadora de cada modelo. La base y la grilla se leen por
 defecto de `data/preprocessed/grid_hyperparams/hiperparametros.json`, generado por
 `pre-process.py`; `--hiperparametros` (alias `--params`) permite usar otro JSON. El
@@ -58,16 +58,23 @@ contiene `base` y `grilla`; esta última se genera como producto cartesiano expl
 Cada variación se fusiona sobre `base`, así que solo declara los valores que cambia.
 Los valores se editan en `notebooks/hiperparametros.py`.
 
-El preprocesamiento compara cuatro recetas: `G00` (base), `G01` (sin `ct_*`),
-`G02` (deduplicado) y `G03` (deduplicado + sin `ct_*`). En todas se mantienen los
-puertos agrupados por franja IANA y el `proto` completo, que se codifica con one-hot
-en el pipeline de Spark. Si se modifica esta grilla, vuelve a ejecutar
-`notebooks/pre-process.py` antes de entrenar; el proceso materializa las nuevas celdas
-y elimina las obsoletas. Los checkpoints/resultados de la numeración anterior no
-corresponden a estas recetas y no deben reanudarse ni compararse con la grilla nueva.
-La selección de columnas `log1p` se calcula sobre el fold-train completo de cada ronda,
-antes del submuestreo y del deduplicado, y se comparte entre sus celdas; la validación no
-participa en esa decisión. En fase 3 se recalcula sobre todo el 85 % de entrenamiento.
+El preprocesamiento elimina una sola vez las copias exactas de filas originales antes
+del split cronológico y marca con `es_duplicado` las filas conservadas que pertenecían a
+grupos repetidos. La grilla es factorial: cruza dos opciones de `ct_*` (con/sin) con las
+cuatro combinaciones de asimetrías (ninguna, solo paquetes, solo bytes, ambas), para ocho
+celdas. Esto permite comparar cada señal por separado y también su efecto conjunto. Las
+asimetrías se agregan como columnas y conservan sus conteos fuente:
+`(Spkts-Dpkts)/max(Spkts+Dpkts, 1)` y
+`(sbytes-dbytes)/max(sbytes+dbytes, 1)`. En todas las celdas se mantienen los puertos
+agrupados por franja IANA y el `proto` completo, que se codifica con one-hot en el pipeline
+de Spark.
+Si cambia esta grilla o la regla de limpieza,
+vuelve a ejecutar `notebooks/pre-process.py` antes de entrenar; el proceso elimina celdas
+obsoletas. Los checkpoints y resultados de la configuración anterior no deben reanudarse
+ni compararse con los nuevos artefactos. La selección de columnas `log1p` se calcula sobre
+el fold-train completo de cada ronda, antes del submuestreo, y se comparte entre celdas;
+la validación no participa en esa decisión. En fase 3 se recalcula sobre todo el 85 % de
+entrenamiento.
 
 Cada fold se persiste como checkpoint en `results/iteracion_N/checkpoints/`. Para
 repartir el trabajo entre jobs:
@@ -132,14 +139,10 @@ queda registrada y no impide probar las demás; el script termina con código di
 cero si alguna falló.
 
 El límite de filas por categoría se aplica al materializar cada `train.parquet` de la grilla:
-por defecto se conservan hasta `100000` filas por etiqueta `label`, con muestreo
+por defecto se conservan hasta `100000` filas únicas por etiqueta `label`, con muestreo
 reproducible (semilla 42). Las clases con menos filas se conservan completas. Las
-validaciones no se submuestrean y `base/` permanece íntegra para la fase 3. En cada ronda,
-las celdas parten de la misma muestra y luego aplican o no deduplicación; los conteos de
-filas, grupos únicos y proporción duplicada por clase quedan en
-`grid_preprocess/estadisticas_muestreo.csv`, antes y después del deduplicado. Por ello, las
-celdas deduplicadas pueden quedar con menos filas que el límite. El límite se cambia al
-generar los artefactos; `0` lo desactiva:
+validaciones no se submuestrean y `base/` permanece íntegra para la fase 3. El límite se
+cambia al generar los artefactos; `0` lo desactiva:
 
 ```bash
 python notebooks/pre-process.py --limite-por-categoria 50000

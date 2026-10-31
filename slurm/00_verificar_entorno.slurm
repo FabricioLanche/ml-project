@@ -18,6 +18,12 @@ PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 
 cd "$PROJECT_DIR"
+LOG_DIR="${LOG_DIR:-$PROJECT_DIR/results/logs}"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/${SLURM_JOB_NAME:-unsw-check}-${SLURM_JOB_ID:-manual}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "Log unificado: $LOG_FILE"
+
 for required in \
     requirements.txt \
     notebooks/common.py \

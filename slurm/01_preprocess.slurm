@@ -25,6 +25,12 @@ CONDA_ENV="${CONDA_ENV:-ml-unsw}"
 LIMITE_POR_CATEGORIA="${LIMITE_POR_CATEGORIA:-100000}"
 
 cd "$PROJECT_DIR"
+LOG_DIR="${LOG_DIR:-$PROJECT_DIR/results/logs}"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/${SLURM_JOB_NAME:-unsw-preprocess}-${SLURM_JOB_ID:-manual}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "Log unificado: $LOG_FILE"
+
 # Lmod en Khipu referencia LD_PRELOAD durante su inicialización y este job
 # usa `set -u`.
 export LD_PRELOAD="${LD_PRELOAD-}"
