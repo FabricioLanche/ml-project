@@ -134,6 +134,6 @@ if [[ "$REANUDAR" == "1" ]]; then
     args+=(--reanudar)
 fi
 
-srun --ntasks=1 python -u notebooks/k-foldCV.py "${args[@]}"
+srun --ntasks=1 python -u src/pipeline-train.py "${args[@]}"
 
 echo "k-fold CV y evaluación final completados."

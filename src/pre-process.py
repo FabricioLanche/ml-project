@@ -27,7 +27,7 @@ Produce, en `data/preprocessed/`:
 
 * `grid_hyperparams/`
     - `hiperparametros.json`: base y variaciones de hiperparámetros que consume el
-      entrenamiento. Se edita en `notebooks/hiperparametros.py`.
+      entrenamiento. Se edita en `src/utilities/hyperparams-config.py`.
 
 Notas de alcance
 ----------------
@@ -72,10 +72,11 @@ Notas de alcance
   derivadas (ct_* y ambas asimetrías); cada celda solo descarta las columnas que no
   le corresponden. El resultado en disco es idéntico al de fitear celda por celda.
 
-Ejecución:  python3 notebooks/pre-process.py
+Ejecución:  python3 src/pre-process.py
 """
 
 import argparse
+import importlib.util
 import json
 import re
 import shutil
@@ -85,12 +86,27 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-try:
-    from hiperparametros import contenido as contenido_hiperparametros
-except ModuleNotFoundError:
-    from notebooks.hiperparametros import contenido as contenido_hiperparametros
-
 BASE = Path(__file__).resolve().parent.parent
+UTILITIES_DIR = Path(__file__).resolve().parent / "utilities"
+
+
+def _cargar_configuracion(nombre: str):
+    ruta = UTILITIES_DIR / nombre
+    spec = importlib.util.spec_from_file_location(ruta.stem.replace("-", "_"), ruta)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"no se pudo cargar la configuración {ruta}")
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+_hyperparams_config = _cargar_configuracion("hyperparams-config.py")
+_preprocessing_config = _cargar_configuracion("preprocessing-config.py")
+contenido_hiperparametros = _hyperparams_config.contenido
+CELDAS = _preprocessing_config.CELDAS
+CELDA_COMPLETA = _preprocessing_config.CELDA_COMPLETA
+COLS_ASIMETRIA = _preprocessing_config.COLS_ASIMETRIA
+
 DATA_DIR = BASE / "data" / "raw"
 PROC_DIR = BASE / "data" / "preprocessed"
 BASE_DIR = PROC_DIR / "base"
@@ -188,30 +204,6 @@ UMBRAL_PROTO = 0.001  # protocolos con < 0.1 % del fold-train pasan a "otros"
 CATEGORIA_OTROS = "otros"
 
 # ===========================================================================
-# Rejilla de preprocesamiento
-# ===========================================================================
-# Diseño factorial: presencia/ausencia de cada asimetría, cruzada con conservar/excluir
-# ct_*. Así se estiman sus efectos individuales y conjuntos. Se conservan las fuentes.
-# Puertos por franja IANA, proto, log1p, escalado e imputación son comunes.
-CELDAS = {
-    "G00": {"ct": True,  "feature": "base"},
-    "G01": {"ct": False, "feature": "base"},
-    "G02": {"ct": True,  "feature": "packet_asym"},
-    "G03": {"ct": False, "feature": "packet_asym"},
-    "G04": {"ct": True,  "feature": "byte_asym"},
-    "G05": {"ct": False, "feature": "byte_asym"},
-    "G06": {"ct": True,  "feature": "both_asym"},
-    "G07": {"ct": False, "feature": "both_asym"},
-}
-
-# Receta común: genera todas las columnas derivadas; cada celda descarta las que sobran.
-CELDA_COMPLETA = {"ct": True, "feature": "both_asym"}
-COLS_ASIMETRIA = {
-    "packet_asymmetry": {"packet_asym", "both_asym"},
-    "byte_asymmetry": {"byte_asym", "both_asym"},
-}
-
-
 def columnas_a_quitar(celda: dict, columnas) -> list[str]:
     """Columnas de la receta completa que NO pertenecen a la celda."""
     quitar = []

@@ -36,6 +36,7 @@ class FoldFeatures:
     train: object
     val: object
     modelo: object
+    conteos_clase: dict[int, int]
 
     def liberar(self) -> None:
         self.train.unpersist(blocking=True)
@@ -52,7 +53,8 @@ def preparar_fold_features(spark, ronda, escala=True) -> FoldFeatures:
     modelo = pipeline.fit(train_df)
     train_features = modelo.transform(train_df).persist(StorageLevel.MEMORY_AND_DISK)
     val_features = modelo.transform(val_df).persist(StorageLevel.MEMORY_AND_DISK)
-    return FoldFeatures(train_features, val_features, modelo)
+    conteos_clase = common.contar_clases(train_features)
+    return FoldFeatures(train_features, val_features, modelo, conteos_clase)
 
 
 def evaluar_features(fold: FoldFeatures, algo: str, params: dict,
@@ -60,7 +62,11 @@ def evaluar_features(fold: FoldFeatures, algo: str, params: dict,
     """Entrena solo el clasificador sobre features ya ajustadas."""
     col_features = "features" if escala else "features_raw"
     clasificador = common.crear_clasificador(algo, params, col_features)
-    modelo = clasificador.fit(fold.train)
+    esquema_peso = (params or {}).get("pesoClases", "ninguno")
+    train_ajuste = common.agregar_pesos(
+        fold.train, esquema_peso, fold.conteos_clase
+    )
+    modelo = clasificador.fit(train_ajuste)
     pred = common.seleccionar_predicciones(modelo.transform(fold.val))
     return common.evaluar(pred)
 
@@ -80,6 +86,8 @@ def correr_final(spark, entradas_train, entrada_test, *, algo: str, params: dict
         parte = common.cargar_parquet(spark, ruta)
         train_df = parte if train_df is None else train_df.unionByName(parte)
     test_df = common.cargar_parquet(spark, entrada_test)
+    esquema_peso = (params or {}).get("pesoClases", "ninguno")
+    train_df = common.agregar_pesos(train_df, esquema_peso)
     pipeline = common.construir_pipeline(train_df, algo, params, escala)
     modelo = pipeline.fit(train_df)
     pred = common.seleccionar_predicciones(modelo.transform(test_df))

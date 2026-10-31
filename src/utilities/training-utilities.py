@@ -2,6 +2,7 @@
 
 import json
 import csv
+import importlib.util
 from pathlib import Path
 
 from pyspark.ml import Pipeline, PipelineModel
@@ -22,15 +23,25 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
 
 #: Columnas que nunca son features (mismas que `CONTROL` en `pre-process.py`).
-CONTROL = ("label", "attack_cat", "es_duplicado", "Ltime", "fold_id", "_grupo_duplicado")
+COL_PESO = "__peso_instancia"
+ESQUEMAS_PESO = ("ninguno", "raiz", "balanceado")
+CONTROL = (
+    "label", "attack_cat", "es_duplicado", "Ltime", "fold_id",
+    "_grupo_duplicado", COL_PESO,
+)
 
 ALGOS = ("logreg", "rf", "svm")
-PARALELISMO_OVR = 10
+PARALELISMO_OVR = 3
 
-try:
-    from hiperparametros import BASE as PARAMS_POR_DEFECTO
-except ModuleNotFoundError:
-    from notebooks.hiperparametros import BASE as PARAMS_POR_DEFECTO
+_HYPERPARAMS_PATH = Path(__file__).with_name("hyperparams-config.py")
+_HYPERPARAMS_SPEC = importlib.util.spec_from_file_location(
+    "hyperparams_config", _HYPERPARAMS_PATH
+)
+if _HYPERPARAMS_SPEC is None or _HYPERPARAMS_SPEC.loader is None:
+    raise ImportError(f"no se pudo cargar la configuración {_HYPERPARAMS_PATH}")
+_HYPERPARAMS_MODULE = importlib.util.module_from_spec(_HYPERPARAMS_SPEC)
+_HYPERPARAMS_SPEC.loader.exec_module(_HYPERPARAMS_MODULE)
+PARAMS_POR_DEFECTO = _HYPERPARAMS_MODULE.BASE
 
 # Métricas escalares que se reportan por corrida. Los promedios son macro: cada clase
 # pesa igual y la agregación entre folds queda a cargo del orquestador de CV.
@@ -69,6 +80,14 @@ def crear_clasificador(algo: str, params: dict | None = None,
     if algo not in ALGOS:
         raise ValueError(f"algoritmo desconocido {algo!r}; opciones: {', '.join(ALGOS)}")
     hiperparametros_default = {**PARAMS_POR_DEFECTO[algo], **(params or {})}
+    esquema_peso = hiperparametros_default.pop("pesoClases", "ninguno")
+    if esquema_peso not in ESQUEMAS_PESO:
+        raise ValueError(
+            f"esquema de pesos desconocido {esquema_peso!r}; "
+            f"opciones: {', '.join(ESQUEMAS_PESO)}"
+        )
+    if esquema_peso != "ninguno":
+        hiperparametros_default["weightCol"] = COL_PESO
 
     data = dict(featuresCol=col_features, labelCol="label", predictionCol="prediction")
     if algo == "logreg":
@@ -79,8 +98,65 @@ def crear_clasificador(algo: str, params: dict | None = None,
     # MLlib no tiene kernel RBF: el SVM es lineal, y al ser binario necesita
     # OneVsRest para las 10 clases (10 modelos binarios por fold).
     base = LinearSVC(**data, **hiperparametros_default)
-    return OneVsRest(classifier=base, featuresCol=col_features, labelCol="label",
-                     predictionCol="prediction", parallelism=PARALELISMO_OVR)
+    ovr = {
+        "classifier": base,
+        "featuresCol": col_features,
+        "labelCol": "label",
+        "predictionCol": "prediction",
+        "parallelism": PARALELISMO_OVR,
+    }
+    if esquema_peso != "ninguno":
+        ovr["weightCol"] = COL_PESO
+    return OneVsRest(**ovr)
+
+
+def contar_clases(df: DataFrame) -> dict[int, int]:
+    """Cuenta etiquetas en un conjunto de entrenamiento, nunca en validación/test."""
+    return {
+        int(fila["label"]): int(fila["count"])
+        for fila in df.groupBy("label").count().collect()
+    }
+
+
+def pesos_por_clase(conteos: dict[int, int], esquema: str) -> dict[int, float]:
+    """Devuelve pesos de media uno: raíz inversa o inversa de la frecuencia."""
+    if esquema not in ESQUEMAS_PESO:
+        raise ValueError(
+            f"esquema de pesos desconocido {esquema!r}; "
+            f"opciones: {', '.join(ESQUEMAS_PESO)}"
+        )
+    if not conteos or any(int(n) <= 0 for n in conteos.values()):
+        raise ValueError("conteos de clase vacíos o no positivos")
+    if esquema == "ninguno":
+        return {int(clase): 1.0 for clase in conteos}
+
+    potencia = 0.5 if esquema == "raiz" else 1.0
+    total = sum(int(n) for n in conteos.values())
+    normalizador = total / sum(int(n) ** (1.0 - potencia) for n in conteos.values())
+    return {
+        int(clase): normalizador / (int(n) ** potencia)
+        for clase, n in conteos.items()
+    }
+
+
+def agregar_pesos(
+    df: DataFrame,
+    esquema: str,
+    conteos: dict[int, int] | None = None,
+) -> DataFrame:
+    """Añade ``COL_PESO`` usando frecuencias calculadas solo sobre train."""
+    if esquema == "ninguno":
+        return df
+    pesos = pesos_por_clase(conteos or contar_clases(df), esquema)
+    mapa = F.create_map(*[
+        elemento
+        for clase, peso in pesos.items()
+        for elemento in (F.lit(float(clase)), F.lit(float(peso)))
+    ])
+    return df.withColumn(
+        COL_PESO,
+        F.element_at(mapa, F.col("label").cast("double")),
+    )
 
 
 def construir_pipeline_caracteristicas(df: DataFrame, escala: bool = True) -> Pipeline:

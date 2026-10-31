@@ -28,9 +28,23 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import common
-import train
+UTILITIES_DIR = Path(__file__).resolve().parent / "utilities"
+sys.path.insert(0, str(UTILITIES_DIR))
+
+
+def _cargar_modulo_utilidad(nombre: str, archivo: str):
+    ruta = UTILITIES_DIR / archivo
+    spec = importlib.util.spec_from_file_location(nombre, ruta)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"no se pudo cargar {ruta}")
+    modulo = importlib.util.module_from_spec(spec)
+    sys.modules[nombre] = modulo
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+common = _cargar_modulo_utilidad("common", "training-utilities.py")
+train = _cargar_modulo_utilidad("train", "training-functions.py")
 import pandas as pd
 import pyspark
 
@@ -171,7 +185,7 @@ def _escribir_json(ruta: Path, contenido: dict) -> None:
 def _leer_hiperparametros(ruta):
     if not ruta.exists():
         raise FileNotFoundError(
-            f"no existe {ruta}; ejecute notebooks/pre-process.py para generarlo"
+            f"no existe {ruta}; ejecute src/pre-process.py para generarlo"
         )
     contenido = json.loads(ruta.read_text(encoding="utf-8"))
     if "base" in contenido or "grilla" in contenido:

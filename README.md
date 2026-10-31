@@ -18,15 +18,15 @@ Desarrollar un clasificador de tráfico de red que distinga el tráfico normal (
 
 ```
 ml-project/
-├── notebooks/
-│   ├── eda.ipynb         # Análisis exploratorio de datos (principal)
-│   ├── eda.py            # Versión en script (desarrollo y debugging)
-│   ├── pre-process.ipynb # Preprocesamiento e ingeniería de características
-│   ├── pre-process.py    # Versión en script (desarrollo y debugging)
-│   ├── hiperparametros.py # Base y grilla de hiperparámetros
-│   ├── common.py         # Pipeline MLlib y evaluación
-│   ├── train.py          # Motor de entrenamiento
-│   └── k-foldCV.py       # Orquestador de fases 1, 2 y 3
+├── src/
+│   ├── eda.py                    # Análisis exploratorio
+│   ├── pre-process.py            # Preprocesamiento y materialización de datos
+│   ├── pipeline-train.py         # Orquestador de fases 1, 2 y 3
+│   └── utilities/
+│       ├── preprocessing-config.py # Celdas y convenciones comparadas
+│       ├── hyperparams-config.py   # Base y grilla de hiperparámetros
+│       ├── training-utilities.py   # Pipeline MLlib, pesos y evaluación
+│       └── training-functions.py   # Sesión Spark, preparación y entrenamiento
 ├── data/                 # Datos generados (no versionado)
 │   ├── raw/              # CSVs originales de UNSW-NB15
 │   ├── eda/              # Salidas del EDA (no del entrenamiento)
@@ -91,11 +91,10 @@ necesita residir íntegro en memoria.
 
 2. Ejecutar el análisis exploratorio (genera las tablas en `data/eda/tablas/` y las figuras en `data/eda/figuras/`):
 
-   - **Notebook**: abrir `notebooks/eda.ipynb` en Jupyter / VSCode y ejecutar todas las celdas. Asegurarse de que el kernel use el intérprete del entorno activado (en VSCode: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir el del `.venv`). Si el kernel usa otro Python, fallará la importación de los paquetes.
-   - **Script**: equivalente al notebook, usado durante el desarrollo y debugging.
+   - Ejecutar el análisis exploratorio desde el script:
 
      ```bash
-     python3 notebooks/eda.py
+     python3 src/eda.py
      ```
 
 3. Ejecutar el preprocesamiento. Genera, en `data/preprocessed/`, el split cronológico 85/15
@@ -107,7 +106,7 @@ necesita residir íntegro en memoria.
    repartidas entre conjuntos).
 
    ```bash
-   python3 notebooks/pre-process.py
+   python3 src/pre-process.py
    ```
 
    Las copias exactas de filas originales se eliminan una vez antes del split cronológico;
@@ -121,7 +120,7 @@ necesita residir íntegro en memoria.
    artefactos; use `0` para desactivarlo:
 
    ```bash
-   python3 notebooks/pre-process.py --limite-por-categoria 50000
+   python3 src/pre-process.py --limite-por-categoria 50000
    ```
 
    La selección de columnas para `log1p` se calcula con el fold-train completo antes del
@@ -129,7 +128,8 @@ necesita residir íntegro en memoria.
    la fase 3 se vuelve a seleccionar usando todo el 85 % de entrenamiento.
 
    La base y las variaciones de hiperparámetros se editan en
-   `notebooks/hiperparametros.py`; el preprocesamiento las materializa en
+   `src/utilities/hyperparams-config.py`; las convenciones de preprocesamiento se
+   definen en `src/utilities/preprocessing-config.py`. El preprocesamiento materializa
    `grid_hyperparams/hiperparametros.json`.
 
 ## Ejecución en Khipu mediante Slurm
@@ -251,7 +251,7 @@ la ejecución completa, pero permite comparar configuraciones sin comprometer un
 ocho horas.
 
 El límite por categoría se configura al generar los datos (`LIMITE_POR_CATEGORIA` para
-`slurm/01_preprocess.slurm` o `--limite-por-categoria` en `pre-process.py`). Los jobs de
+`slurm/01_preprocess.slurm` o `--limite-por-categoria` en `src/pre-process.py`). Los jobs de
 entrenamiento consumen los Parquet existentes y no admiten ese argumento. Para cambiar el
 límite, vuelva a ejecutar el preprocesamiento antes del entrenamiento.
 

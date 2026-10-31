@@ -65,9 +65,9 @@ import json
 from itertools import product
 
 #: ``True`` añade el eje ``pesoClases`` (ver docstring). Requiere que el pipeline cree
-#: las columnas de pesos (``common.agregar_pesos``) y que ``crear_clasificador`` traduzca
-#: ``pesoClases`` a ``weightCol``. Con ``False`` la grilla no usa pesos y no hace falta
-#: tocar ``common.py`` ni ``train.py``.
+#: las columnas de pesos (``training-utilities.agregar_pesos``) y que
+#: ``crear_clasificador`` traduzca ``pesoClases`` a ``weightCol``. Con ``False`` la
+#: grilla no usa pesos y no hace falta tocar los módulos de entrenamiento.
 INCLUIR_PESOS = True
 ESQUEMAS_PESO = ("ninguno", "raiz", "balanceado")
 

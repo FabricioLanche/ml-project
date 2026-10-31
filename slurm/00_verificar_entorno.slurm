@@ -26,10 +26,12 @@ echo "Log unificado: $LOG_FILE"
 
 for required in \
     requirements.txt \
-    notebooks/common.py \
-    notebooks/hiperparametros.py \
-    notebooks/train.py \
-    notebooks/k-foldCV.py
+    src/utilities/training-utilities.py \
+    src/utilities/training-functions.py \
+    src/utilities/hyperparams-config.py \
+    src/utilities/preprocessing-config.py \
+    src/pipeline-train.py \
+    src/pre-process.py
 do
     if [[ ! -f "$required" ]]; then
         echo "ERROR: falta el archivo requerido: $PROJECT_DIR/$required" >&2
@@ -111,7 +113,7 @@ print("Prueba Spark local: OK")
 PY
 
 python -m pip check
-python -m py_compile notebooks/common.py notebooks/train.py notebooks/k-foldCV.py notebooks/pre-process.py
+python -m py_compile src/utilities/training-utilities.py src/utilities/training-functions.py src/pipeline-train.py src/pre-process.py
 echo "Dependencias declaradas: consistentes."
 
 if [[ -d data/raw ]]; then

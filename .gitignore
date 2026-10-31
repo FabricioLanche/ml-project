@@ -3,7 +3,7 @@
 **/raw/UNSW*
 results/
 logs/
-notebooks/benchmark-local.py
+src/benchmark-local.py
 dataset/
 $tmp/
 .venv/

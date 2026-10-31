@@ -55,6 +55,6 @@ fi
 
 echo "Iniciando preprocesamiento en $(hostname)"
 echo "Límite de train por categoría: $LIMITE_POR_CATEGORIA"
-srun --ntasks=1 python notebooks/pre-process.py \
+srun --ntasks=1 python src/pre-process.py \
     --limite-por-categoria "$LIMITE_POR_CATEGORIA"
 echo "Preprocesamiento completado."
