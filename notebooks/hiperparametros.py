@@ -75,13 +75,14 @@ def _producto(base: dict, **ejes: list) -> list[dict]:
 
 
 GRILLA: dict[str, list[dict]] = {
-    "logreg": _producto(
-        BASE["logreg"],
-        # Sin C reportado; rejilla logarítmica experimental.
-        regParam=[0.0, 1e-6, 1e-4, 1e-2],
-        # Sin penalty reportado; 0.5 solo como exploración.
-        elasticNetParam=[0.0, 0.5],
-    ),
+    "logreg": [
+        cfg for cfg in _producto(
+            BASE["logreg"],
+            regParam=[0.0, 1e-6, 1e-4, 1e-2],
+            elasticNetParam=[0.0, 0.5],
+        )
+        if not (cfg["regParam"] == 0.0 and cfg["elasticNetParam"] != 0.0)
+    ],
     "rf": _producto(
         BASE["rf"],
         # Ahmad (2021) y Dadavali (2026): 100; Özbek (2025): 200.

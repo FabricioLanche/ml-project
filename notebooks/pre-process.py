@@ -11,13 +11,17 @@ Produce, en `data/preprocessed/`:
     - `test.parquet`: el 15 % restante, sellado hasta la fase 3.
     - `metadatos.json`: cortes, codificación del objetivo y decisiones de limpieza.
   Los archivos de `base/` guardan las features **sin transformar** (más `label`,
-  `attack_cat`, `es_duplicado`, `Ltime` y `fold_id`).
+  `attack_cat`, `es_duplicado`, `Ltime` y `fold_id`), con los nombres de columna y los
+  tipos originales (sin normalizar): es lo que espera la receta (`fit_transform` /
+  `transform`), de modo que aplicarla sobre `base/` equivale a aplicarla en memoria.
 
 * `grid_preprocess/`
     - `<celda>/r1..r5/{train,val}.parquet`: una variante por celda y por ronda. En la
       ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train) y se
-      aplica congelada a `train` y a `val` (el fold `f`).
-    - `<celda>/r*/parametros.json`: los valores fiteados (modas y columnas log1p).
+      aplica congelada a `train` y a `val` (el fold `f`). Contienen solo features y
+      `label`: `attack_cat`, `es_duplicado` y `Ltime` NO se escriben aquí.
+    - `<celda>/r*/parametros.json`: los valores fiteados (modas, columnas log1p y
+      protocolos frecuentes).
     - `manifiesto.csv`: qué receta define cada celda.
 
 * `grid_hyperparams/`
@@ -30,20 +34,32 @@ Notas de alcance
   idénticos en todas las celdas y no forman parte de la rejilla. Se aplican dentro del
   pipeline de MLlib en la etapa de entrenamiento (fit por fold), no aquí. Por eso los
   parquet de `grid_preprocess/` contienen columnas tabulares, no un vector de features.
-* Los Parquet se escriben con nombres de columnas normalizados y variables booleanas
-  convertidas a valores numéricos, de modo que Spark ML puede leerlos directamente.
+* Los Parquet que lee Spark (`grid_preprocess/` y la materialización final) se escriben
+  con nombres de columnas normalizados y variables booleanas convertidas a valores
+  numéricos, de modo que Spark ML puede leerlos directamente. `base/` NO se normaliza
+  (solo lo lee pandas). Todos se comprimen con zstd.
 * `StandardScaler` se aplicará también a Random Forest por decisión de uniformidad.
-* `proto` conserva sus categorías originales en todas las celdas y recibe one-hot
-  completo durante el ajuste del pipeline de MLlib.
-* Las copias exactas de filas originales se eliminan una sola vez antes del split
-  cronológico. Se conserva una fila representativa y se marca `es_duplicado=1` para
-  auditar que pertenecía a un grupo repetido en el origen.
+* `proto` colapsa su cola en la categoría `otros`: los protocolos con frecuencia menor
+  a `UMBRAL_PROTO` en el fold-train completo (antes del muestreo) pasan a `otros`, y
+  también cualquier protocolo de val/test no visto en el fit. La lista fiteada se
+  guarda en `parametros.json` y se comparte entre celdas. El one-hot se aplica después
+  en el pipeline de MLlib.
+* La deduplicación se hace una sola vez, antes del split cronológico, sobre **la vista
+  del modelo más la clase**: las features que el modelo realmente recibe (sin IP, sin
+  marcas de tiempo, con los puertos reducidos a su franja IANA) y `attack_cat`. Se
+  conserva la primera aparición (la más antigua) y se marca `es_duplicado=1` si esa
+  fila tenía gemelos en el origen. Filas con las mismas features pero distinta clase
+  se conservan (ruido irreducible) y se agrupan en el mismo fold.
 * Cada `train.parquet` se limita por clase a 100,000 filas por defecto, con semilla 42.
   `--limite-por-categoria 0` lo desactiva; la validación y `base/` permanecen completas.
-* El submuestreo se aplica después de eliminar las copias exactas, por lo que el límite
-  cuenta filas únicas dentro de cada clase.
-* La selección de columnas `log1p` se calcula sobre el fold-train completo antes del
-  muestreo y se comparte entre celdas; en fase 3 se recalcula con todo el train.
+* El submuestreo se aplica después de deduplicar, por lo que el límite cuenta filas
+  únicas dentro de cada clase.
+* La selección de columnas `log1p` y de protocolos frecuentes se calcula sobre el
+  fold-train completo antes del muestreo y se comparte entre celdas; en fase 3 se
+  recalcula con todo el train.
+* Por cada ronda, la receta común se aplica una sola vez generando todas las columnas
+  derivadas (ct_* y ambas asimetrías); cada celda solo descarta las columnas que no
+  le corresponden. El resultado en disco es idéntico al de fitear celda por celda.
 
 Ejecución:  python3 notebooks/pre-process.py
 """
@@ -56,6 +72,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 try:
     from hiperparametros import contenido as contenido_hiperparametros
@@ -119,7 +136,13 @@ LABEL_COL = "label"
 CLASE_COL = "attack_cat"
 DUP_COL = "es_duplicado"
 GRUPO_COL = "_grupo_duplicado"
-CONTROL = {LABEL_COL, CLASE_COL, DUP_COL, GRUPO_COL}
+LTIME_COL = "Ltime"
+FOLD_COL = "fold_id"
+CONTROL = {LABEL_COL, CLASE_COL, DUP_COL, GRUPO_COL, LTIME_COL, FOLD_COL}
+
+# Columnas que se descartan al generar `grid_preprocess/` y la materialización final:
+# no son features.
+COLS_NO_FEATURE = [LTIME_COL, GRUPO_COL, CLASE_COL, DUP_COL, FOLD_COL]
 
 BLANCOS_ESTRUCTURALES = ["is_ftp_login", "ct_ftp_cmd", "ct_flw_http_mthd"]
 IMPUTAR = ["dsport", "sport", "state"]
@@ -149,6 +172,8 @@ SEMILLA = 42
 LIMITE_POR_CATEGORIA_DEFAULT = 100_000
 SEMILLA_SUBMUESTREO = 42
 UMBRAL_LOG1P = 1.0
+UMBRAL_PROTO = 0.001  # protocolos con < 0.1 % del fold-train pasan a "otros"
+CATEGORIA_OTROS = "otros"
 
 # ===========================================================================
 # Rejilla de preprocesamiento
@@ -166,6 +191,24 @@ CELDAS = {
     "G06": {"ct": True,  "feature": "both_asym"},
     "G07": {"ct": False, "feature": "both_asym"},
 }
+
+# Receta común: genera todas las columnas derivadas; cada celda descarta las que sobran.
+CELDA_COMPLETA = {"ct": True, "feature": "both_asym"}
+COLS_ASIMETRIA = {
+    "packet_asymmetry": {"packet_asym", "both_asym"},
+    "byte_asymmetry": {"byte_asym", "both_asym"},
+}
+
+
+def columnas_a_quitar(celda: dict, columnas) -> list[str]:
+    """Columnas de la receta completa que NO pertenecen a la celda."""
+    quitar = []
+    if not celda["ct"]:
+        quitar += [c for c in CT_COLS if c in columnas]
+    for col, features_que_la_incluyen in COLS_ASIMETRIA.items():
+        if celda["feature"] not in features_que_la_incluyen and col in columnas:
+            quitar.append(col)
+    return quitar
 
 
 # ===========================================================================
@@ -201,6 +244,11 @@ def asegurar_dataset() -> None:
 # ===========================================================================
 # Recetas: ajuste (fit) y aplicación (transform)
 # ===========================================================================
+def normalizar_nombre(col: str) -> str:
+    """Nombre de columna tal como queda en los Parquet (ct_src_ ltm → ct_src_ltm)."""
+    return re.sub(r"_+", "_", col.replace(" ", "_").replace("-", "_"))
+
+
 def _columnas_numericas(df: pd.DataFrame) -> list[str]:
     """Numéricas transformables (excluye control y binarias predefinidas)."""
     return [
@@ -234,6 +282,23 @@ def _rellenar_nulos(df: pd.DataFrame, params: dict) -> pd.DataFrame:
         if col in out.columns:
             out[col] = out[col].fillna(params["modas"][col])
     return out
+
+
+def seleccionar_proto_frecuentes(train: pd.DataFrame) -> list[str]:
+    """Protocolos con frecuencia >= UMBRAL_PROTO en el fold-train completo."""
+    frec = train["proto"].astype(str).value_counts(normalize=True)
+    return sorted(frec[frec >= UMBRAL_PROTO].index.tolist())
+
+
+def _agrupar_proto(df: pd.DataFrame, params: dict) -> pd.DataFrame:
+    """Colapsa en `otros` los protocolos fuera de la lista fiteada.
+
+    Modifica `df` in situ: se invoca siempre sobre el DataFrame ya copiado por
+    `_rellenar_nulos`.
+    """
+    proto = df["proto"].astype(str)
+    df["proto"] = proto.where(proto.isin(set(params["proto_frecuentes"])), CATEGORIA_OTROS)
+    return df
 
 
 def _derivar_puertos(df: pd.DataFrame) -> pd.DataFrame:
@@ -297,8 +362,8 @@ def submuestrear_por_categoria(
         resumen.append(f"{clase} {len(grupo):,} → {cantidad:,}")
 
     print(
-        f"  submuestreo materializado por clase (límite "
-        f"{limite_por_categoria:,}): " + ", ".join(resumen)
+        f"  submuestreo por clase (límite {limite_por_categoria:,}): "
+        + ", ".join(resumen)
     )
     return pd.concat(muestras, ignore_index=True)
 
@@ -328,68 +393,88 @@ def fit_transform(
     limite_por_categoria: int | None = None,
     semilla: int = SEMILLA_SUBMUESTREO,
     log1p_cols: list[str] | None = None,
+    proto_frecuentes: list[str] | None = None,
 ) -> tuple[dict, pd.DataFrame]:
     """Fitea la receta y devuelve parámetros y train transformado.
 
-    Las copias exactas ya se eliminaron antes del split. `limite_por_categoria=None`
-    conserva todas las filas, como en la fase final.
+    Los duplicados ya se eliminaron antes del split. `limite_por_categoria=None`
+    conserva todas las filas, como en la fase final. El resultado no incluye
+    `attack_cat`, `es_duplicado`, `Ltime` ni la columna de grupo.
     """
     columnas_log1p = (
         seleccionar_log1p_cols(train) if log1p_cols is None else log1p_cols
     )
+    frecuentes = (
+        seleccionar_proto_frecuentes(train) if proto_frecuentes is None
+        else proto_frecuentes
+    )
     fit = train
     if limite_por_categoria is not None:
         fit = submuestrear_por_categoria(fit, limite_por_categoria, semilla)
-    params: dict = {"modas": {}, "log1p_cols": list(columnas_log1p)}
+    params: dict = {
+        "modas": {},
+        "log1p_cols": list(columnas_log1p),
+        "proto_frecuentes": list(frecuentes),
+    }
     for col in IMPUTAR:
         modo = fit[col].dropna().mode()
         v = modo.iat[0] if len(modo) else np.nan
         params["modas"][col] = v.item() if hasattr(v, "item") else v
 
     w = _rellenar_nulos(fit, params)
+    w = _agrupar_proto(w, params)
     w = _derivar_puertos(w)
     w = _derivar_feature(w, celda)
     w = _filtrar_ct(w, celda)
-
     w = _aplicar_log1p(w, params)
-    return params, w.drop(columns=["Ltime", GRUPO_COL], errors="ignore")
+    return params, w.drop(columns=COLS_NO_FEATURE, errors="ignore")
 
 
 def transform(df: pd.DataFrame, celda: dict, params: dict) -> pd.DataFrame:
     """Aplica una receta ya fiteada (para el fold-val o el test)."""
     out = _rellenar_nulos(df, params)
+    out = _agrupar_proto(out, params)
     out = _derivar_puertos(out)
     out = _derivar_feature(out, celda)
     out = _filtrar_ct(out, celda)
     out = _aplicar_log1p(out, params)
-    return out.drop(columns=["Ltime", GRUPO_COL], errors="ignore")
+    return out.drop(columns=COLS_NO_FEATURE, errors="ignore")
+
+
+def verificar_sin_nulos(df: pd.DataFrame, contexto: str) -> None:
+    """Falla si queda algún NaN: VectorAssembler (handleInvalid='error') fallaría."""
+    con_nulos = df.columns[df.isna().any()].tolist()
+    if con_nulos:
+        raise ValueError(f"[{contexto}] columnas con valores nulos: {con_nulos}")
 
 
 def preparar_salida_spark(df: pd.DataFrame) -> pd.DataFrame:
     """Adapta un resultado tabular al esquema que consume Spark ML.
 
-    La normalización se hace una sola vez al persistir el Parquet: Spark no
-    necesita renombrar columnas ni castear booleanos en cada lectura.
+    Modifica `df` in situ (sin copiarlo): el llamador no debe reutilizarlo con los
+    nombres originales. La normalización se hace una sola vez al persistir el Parquet.
     """
-    out = df.copy()
-    out.columns = [
-        re.sub(r"_+", "_", col.replace(" ", "_").replace("-", "_"))
-        for col in out.columns
-    ]
-    for col in out.columns:
-        if pd.api.types.is_bool_dtype(out[col].dtype):
-            out[col] = out[col].astype("float64")
-    return out
+    df.columns = [normalizar_nombre(col) for col in df.columns]
+    for col in df.columns:
+        if pd.api.types.is_bool_dtype(df[col].dtype):
+            df[col] = df[col].astype("float64")
+    return df
 
 
-def escribir_parquet_spark(df: pd.DataFrame, ruta: Path) -> None:
-    preparar_salida_spark(df).to_parquet(
-        ruta, index=False, compression="snappy"
-    )
+def escribir_parquet_spark(df: pd.DataFrame, ruta: Path, *, normalizar: bool = True) -> None:
+    """Escribe un Parquet con zstd.
+
+    `normalizar=True` (por defecto) adapta nombres y booleanos para Spark ML y modifica
+    `df` in situ. `base/` se escribe con `normalizar=False` para conservar el esquema
+    original que espera la receta.
+    """
+    if normalizar:
+        preparar_salida_spark(df)
+    df.to_parquet(ruta, index=False, compression="zstd")
 
 
 def validar_salidas_preprocesamiento() -> None:
-    """Falla si la materialización no dejó todos los artefactos requeridos por k-fold."""
+    """Falla si falta algún artefacto o si la rejilla contiene columnas no permitidas."""
     requeridos = [
         BASE_DIR / "metadatos.json",
         BASE_DIR / "test.parquet",
@@ -414,6 +499,23 @@ def validar_salidas_preprocesamiento() -> None:
             f"{detalle}"
         )
 
+    # Los parquet de la rejilla no deben llevar columnas que no son features.
+    prohibidas = {normalizar_nombre(c) for c in COLS_NO_FEATURE}
+    problemas = []
+    for ruta in requeridos:
+        if ruta.suffix == ".parquet" and GRID_PREPROC_DIR in ruta.parents:
+            nombres = set(pq.read_schema(ruta).names)
+            indebidas = sorted(nombres & prohibidas)
+            if indebidas:
+                problemas.append(f"{ruta}: columnas no permitidas {indebidas}")
+            if LABEL_COL not in nombres:
+                problemas.append(f"{ruta}: falta la columna '{LABEL_COL}'")
+    if problemas:
+        raise AssertionError(
+            "Parquet de la rejilla con esquema inválido:\n"
+            + "\n".join(f"  - {p}" for p in problemas)
+        )
+
 
 def _aplicar_log1p(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     for c in params["log1p_cols"]:
@@ -429,8 +531,7 @@ def _aplicar_log1p(df: pd.DataFrame, params: dict) -> pd.DataFrame:
 def corte_alineado(ltime: np.ndarray, fraccion: float) -> int:
     """Índice de corte desplazado a un límite de Ltime.
 
-    Evita partir un grupo de filas con idéntica marca de tiempo (y por tanto un grupo
-    de duplicados) entre dos particiones.
+    Evita partir un grupo de filas con idéntica marca de tiempo entre dos particiones.
     """
     n = len(ltime)
     i = int(fraccion * n)
@@ -440,10 +541,11 @@ def corte_alineado(ltime: np.ndarray, fraccion: float) -> int:
 
 
 def asignar_folds(label: np.ndarray, grupo: np.ndarray, k: int, semilla: int) -> np.ndarray:
-    """Estratificado por clase y agrupado por duplicado.
+    """Estratificado por clase y agrupado por vista del modelo.
 
-    Cada grupo (conjunto de filas idénticas) cae entero en un fold, y los grupos se
-    reparten de forma codiciosa para equilibrar el recuento de cada clase entre folds.
+    Cada grupo (filas con las mismas features del modelo; tras deduplicar solo pueden
+    diferir en la clase) cae entero en un fold, y los grupos se reparten de forma
+    codiciosa para equilibrar el recuento de cada clase entre folds.
     """
     info = pd.DataFrame({"grupo": grupo, "label": label})
     tamanos = info.groupby("grupo", observed=True).size()
@@ -504,35 +606,58 @@ def main(argv=None) -> None:
     df["attack_cat"] = (
         df["attack_cat"].fillna("Benign").str.strip().replace({"Backdoor": "Backdoors"})
     )
-    inc = int(((df["attack_cat"] != "Benign") & (df["Label"] == 0)).sum())
-    if inc:
-        raise ValueError("attack_cat no se corresponde 1:1 con Label; revisar limpieza.")
+    # Consistencia 1:1 entre attack_cat y Label, en ambos sentidos.
+    inc_a = int(((df["attack_cat"] != "Benign") & (df["Label"] == 0)).sum())
+    inc_b = int(((df["attack_cat"] == "Benign") & (df["Label"] == 1)).sum())
+    if inc_a or inc_b:
+        raise ValueError(
+            "attack_cat no se corresponde 1:1 con Label "
+            f"(ataque con Label=0: {inc_a}; Benign con Label=1: {inc_b}); revisar limpieza."
+        )
     for col in ["state", "service", "attack_cat"]:
         df[col] = df[col].astype("category")
 
-    cols_hash = [c for c in df.columns if c not in ("attack_cat", "Label")]
     df = df.sort_values("Ltime", kind="stable").reset_index(drop=True)
     filas_originales = len(df)
-    # Duplicado significa igualdad de la fila completa, incluidas las etiquetas.
-    es_dup_original = df.duplicated(keep=False).to_numpy()
-    dup_exceso = int(df.duplicated().sum())
-    conservar = ~df.duplicated(keep="first").to_numpy()
-    filas_marcadas = int(es_dup_original.sum())
-    df = df.loc[conservar].reset_index(drop=True)
-    # La marca identifica la copia representativa de un grupo repetido en el origen.
-    es_dup = es_dup_original[conservar]
-    grupo = pd.util.hash_pandas_object(df[cols_hash], index=False).to_numpy()
-    n = len(df)
-    print(
-        f"\n[1] cargado: {filas_originales:,} filas · "
-        f"copias exactas eliminadas {dup_exceso:,} "
-        f"({dup_exceso / filas_originales * 100:.2f} %) · "
-        f"filas únicas conservadas {n:,}"
-    )
 
+    # Blancos estructurales: se rellenan antes de deduplicar para que la vista del
+    # modelo coincida con lo que el modelo realmente recibe.
     for col in BLANCOS_ESTRUCTURALES:
         relleno = False if df[col].dtype == "boolean" else 0
         df[col] = df[col].fillna(relleno)
+
+    # ---------------- Deduplicación sobre la vista del modelo ----------------
+    # Vista = features sin IP ni tiempos, con los puertos como franja IANA (lo que el
+    # modelo recibe). Duplicado = misma vista + misma clase; se conserva la primera
+    # aparición (la más antigua, porque df está ordenado por Ltime).
+    features = [c for c in df.columns if c not in ELIMINAR_ESTATICO]
+    vista = df[[c for c in features if c not in ("sport", "dsport")]].copy()
+    vista["sport_franja"] = np.asarray(_franja(df["sport"].astype("float64"))).astype(str)
+    vista["dsport_franja"] = np.asarray(_franja(df["dsport"].astype("float64"))).astype(str)
+
+    vista_y = vista.assign(attack_cat=df["attack_cat"].astype(str))
+    es_dup_original = vista_y.duplicated(keep=False).to_numpy()
+    dup = vista_y.duplicated(keep="first").to_numpy()
+    del vista_y
+    conservar = ~dup
+    dup_exceso = int(dup.sum())
+    filas_marcadas = int(es_dup_original.sum())
+
+    df = df.loc[conservar].reset_index(drop=True)
+    vista = vista.loc[conservar].reset_index(drop=True)
+    # La marca identifica la fila representativa de un grupo repetido en el origen.
+    es_dup = es_dup_original[conservar]
+    # Grupo = misma vista del modelo (sin la clase): solo agrupa filas con features
+    # idénticas y clases distintas, que deben caer en el mismo fold.
+    grupo = pd.util.hash_pandas_object(vista, index=False).to_numpy()
+    del vista
+    n = len(df)
+    print(
+        f"\n[1] cargado: {filas_originales:,} filas · "
+        f"duplicados (vista del modelo + clase) eliminados {dup_exceso:,} "
+        f"({dup_exceso / filas_originales * 100:.2f} %) · "
+        f"filas únicas conservadas {n:,}"
+    )
 
     # ---------------- Split 85/15 ----------------
     ltime = df["Ltime"].to_numpy()
@@ -548,7 +673,6 @@ def main(argv=None) -> None:
     mapa = {c: i for i, c in enumerate(clases)}
     label = df["attack_cat"].map(mapa).astype("int8").to_numpy()
 
-    features = [c for c in df.columns if c not in ELIMINAR_ESTATICO]
     cols_base = features + [LABEL_COL, CLASE_COL, DUP_COL, GRUPO_COL, "Ltime"]
     base = df[features].copy()
     base[LABEL_COL] = label
@@ -569,14 +693,17 @@ def main(argv=None) -> None:
     # ---------------- Persistencia de base/ ----------------
     print("\n[4] escribiendo data/preprocessed/base/")
     base_test = base.iloc[idx_test].drop(columns=[GRUPO_COL]).reset_index(drop=True)
-    escribir_parquet_spark(base_test, BASE_DIR / "test.parquet")
+    n_test, c_test = base_test.shape
+    escribir_parquet_spark(base_test, BASE_DIR / "test.parquet", normalizar=False)
+    del base_test
     tamanos_fold = {}
     for j in range(K):
         sub = base.loc[fold == j].drop(columns=[GRUPO_COL]).reset_index(drop=True)
-        escribir_parquet_spark(sub, BASE_DIR / f"fold_{j + 1}.parquet")
         tamanos_fold[f"fold_{j + 1}"] = int(len(sub))
         print(f"  fold_{j + 1}.parquet  {len(sub):>9,} filas × {sub.shape[1]} cols")
-    print(f"  test.parquet     {len(base_test):>9,} filas × {base_test.shape[1]} cols")
+        escribir_parquet_spark(sub, BASE_DIR / f"fold_{j + 1}.parquet", normalizar=False)
+        del sub
+    print(f"  test.parquet     {n_test:>9,} filas × {c_test} cols")
 
     # ---------------- Materialización de la rejilla ----------------
     print(f"\n[5] materializando la rejilla de preprocesamiento ({len(CELDAS)} celdas × {K} rondas)")
@@ -587,36 +714,50 @@ def main(argv=None) -> None:
     estadisticas_obsoletas = GRID_PREPROC_DIR / "estadisticas_muestreo.csv"
     if estadisticas_obsoletas.exists():
         estadisticas_obsoletas.unlink()
-    train_base = base.loc[fold >= 0].reset_index(drop=True)
-    manifiesto = []
-    log1p_por_ronda = {}
-    for cid, celda in CELDAS.items():
-        celda_dir = GRID_PREPROC_DIR / cid
-        celda_dir.mkdir(parents=True, exist_ok=True)
+
+    manifiesto = [
+        {
+            "celda": cid, "ct": celda["ct"], "feature": celda["feature"],
+            "puertos": "solo_franja", "proto": "cola_en_otros",
+        }
+        for cid, celda in CELDAS.items()
+    ]
+    for cid in CELDAS:
         for j in range(K):
-            ronda_dir = celda_dir / f"r{j + 1}"
-            ronda_dir.mkdir(parents=True, exist_ok=True)
-            fit_df = train_base.loc[train_base["fold_id"] != j, cols_base]
-            val_df = train_base.loc[train_base["fold_id"] == j, cols_base]
-            if j not in log1p_por_ronda:
-                log1p_por_ronda[j] = seleccionar_log1p_cols(fit_df)
-            params, train_t = fit_transform(
-                fit_df, celda,
-                limite_por_categoria=args.limite_por_categoria,
-                semilla=SEMILLA_SUBMUESTREO,
-                log1p_cols=log1p_por_ronda[j],
-            )
-            val_t = transform(val_df, celda, params)
-            escribir_parquet_spark(train_t, ronda_dir / "train.parquet")
-            escribir_parquet_spark(val_t, ronda_dir / "val.parquet")
+            (GRID_PREPROC_DIR / cid / f"r{j + 1}").mkdir(parents=True, exist_ok=True)
+
+    train_base = base.loc[fold >= 0].reset_index(drop=True)
+    for j in range(K):
+        fit_df = train_base.loc[train_base["fold_id"] != j, cols_base]
+        val_df = train_base.loc[train_base["fold_id"] == j, cols_base]
+
+        # Todo lo común se calcula UNA vez por ronda.
+        log1p_cols = seleccionar_log1p_cols(fit_df)
+        proto_frec = seleccionar_proto_frecuentes(fit_df)
+        print(f"  ronda {j + 1}: {len(log1p_cols)} columnas log1p · "
+              f"{len(proto_frec)} protocolos frecuentes")
+        params, train_comun = fit_transform(
+            fit_df, CELDA_COMPLETA,
+            limite_por_categoria=args.limite_por_categoria,
+            semilla=SEMILLA_SUBMUESTREO,
+            log1p_cols=log1p_cols,
+            proto_frecuentes=proto_frec,
+        )
+        val_comun = transform(val_df, CELDA_COMPLETA, params)
+        verificar_sin_nulos(train_comun, f"r{j + 1}/train")
+        verificar_sin_nulos(val_comun, f"r{j + 1}/val")
+
+        # Cada celda solo elige sus columnas.
+        for cid, celda in CELDAS.items():
+            ronda_dir = GRID_PREPROC_DIR / cid / f"r{j + 1}"
+            sobran = columnas_a_quitar(celda, train_comun.columns)
+            escribir_parquet_spark(train_comun.drop(columns=sobran), ronda_dir / "train.parquet")
+            escribir_parquet_spark(val_comun.drop(columns=sobran), ronda_dir / "val.parquet")
             with open(ronda_dir / "parametros.json", "w") as fh:
                 json.dump(params, fh, ensure_ascii=False, indent=2, default=str)
-        manifiesto.append({
-            "celda": cid, "ct": celda["ct"], "feature": celda["feature"],
-            "puertos": "solo_franja", "proto": "completo",
-        })
-        print(f"  {cid}: 5 rondas materializadas")
+        del train_comun, val_comun, fit_df, val_df
     pd.DataFrame(manifiesto).to_csv(GRID_PREPROC_DIR / "manifiesto.csv", index=False)
+    print(f"  {len(CELDAS)} celdas × {K} rondas materializadas")
 
     # Conteo de tokens corruptos (solo para reporte: se imputan con la moda).
     corrup = {
@@ -632,7 +773,10 @@ def main(argv=None) -> None:
     meta = {
         "filas_totales": int(n),
         "filas_originales": int(filas_originales),
-        "criterio_deduplicacion": "fila_completa_todas_las_columnas",
+        "criterio_deduplicacion": (
+            "vista_del_modelo_mas_clase: features sin IP ni tiempos, puertos como "
+            "franja IANA, mas attack_cat; se conserva la primera aparicion"
+        ),
         "copias_exactas_eliminadas": dup_exceso,
         "filas_originales_en_grupos_duplicados": filas_marcadas,
         "filas_conservadas_marcadas_como_duplicadas": int(es_dup.sum()),
@@ -643,12 +787,19 @@ def main(argv=None) -> None:
         "semilla": SEMILLA,
         "limite_por_categoria": args.limite_por_categoria,
         "semilla_submuestreo": SEMILLA_SUBMUESTREO,
-        "deduplicacion_exacta_antes_del_split": True,
+        "deduplicacion_antes_del_split": True,
         "submuestreo_por_categoria_despues_de_deduplicar": True,
         "log1p_seleccion_fold_train_completo": True,
+        "proto_cola_en_otros": True,
+        "proto_seleccion_fold_train_completo": True,
+        "umbral_proto": UMBRAL_PROTO,
         "tamanos_folds": tamanos_fold,
+        # Nombres originales, tal como quedan en base/. En la rejilla los nombres están
+        # normalizados y sport/dsport se reemplazan por sport_franja/dsport_franja.
         "columnas_features": features,
+        "columnas_features_rejilla": [normalizar_nombre(c) for c in features],
         "columnas_control": [LABEL_COL, CLASE_COL, DUP_COL],
+        "columnas_no_feature_en_rejilla": [normalizar_nombre(c) for c in COLS_NO_FEATURE],
         "columnas_eliminadas": ELIMINAR_ESTATICO,
         "blancos_estructurales_imputados_a_cero": BLANCOS_ESTRUCTURALES,
         "tokens_corruptos_imputados": IMPUTAR,
@@ -691,13 +842,15 @@ def main(argv=None) -> None:
     sin_alguna = {k: v for k, v in ausentes.items() if v}
     print(f"  folds con clases ausentes: {sin_alguna or 'ninguno (10/10 en cada fold)'}")
 
-    # [V2] Grupos con iguales predictores originales que cruzan train/test.
+    # [V2] Informativo: tras deduplicar por vista+clase, un grupo que cruza train/test
+    # solo puede tener las mismas features con clases distintas (ruido irreducible).
     g_train = set(grupo[idx_train].tolist())
     g_test = set(grupo[idx_test].tolist())
     cruce = len(g_train & g_test)
-    print(f"  [V2] grupos de predictores iguales que cruzan train/test: {cruce}")
-    if cruce:
-        raise AssertionError("Hay grupos con predictores iguales entre train y test")
+    filas_test_con_gemelo = int(np.isin(grupo[idx_test], grupo[idx_train]).sum())
+    print(f"  [V2] grupos de features iguales (distinta clase) que cruzan train/test: "
+          f"{cruce} · filas de test afectadas: {filas_test_con_gemelo:,} "
+          f"({filas_test_con_gemelo / max(len(idx_test), 1) * 100:.3f} %)")
 
     # [V3] El corte es cronológico y no parte un empate de Ltime. Nota: a diferencia
     # del esquema 75/15/10 (donde val amortiguaba a test), aquí los ~100 primeros

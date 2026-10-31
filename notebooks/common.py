@@ -22,10 +22,10 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
 
 #: Columnas que nunca son features (mismas que `CONTROL` en `pre-process.py`).
-CONTROL = ("label", "attack_cat", "es_duplicado")
+CONTROL = ("label", "attack_cat", "es_duplicado", "Ltime", "fold_id", "_grupo_duplicado")
 
 ALGOS = ("logreg", "rf", "svm")
-PARALELISMO_OVR = 5
+PARALELISMO_OVR = 10
 
 try:
     from hiperparametros import BASE as PARAMS_POR_DEFECTO
