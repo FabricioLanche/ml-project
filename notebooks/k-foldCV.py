@@ -42,7 +42,7 @@ DEFAULT_HIPERPARAMETROS = (
     BASE / "data" / "preprocessed" / "grid_hyperparams" / "hiperparametros.json"
 )
 DEFAULT_OUT = BASE / "results"
-CHECKPOINT_VERSION = 4
+CHECKPOINT_VERSION = 5
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 

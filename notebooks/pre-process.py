@@ -7,7 +7,8 @@ entrenamiento. Este script NO entrena ningún modelo: solo limpia, parte y trans
 Produce, en `data/preprocessed/`:
 
 * `base/`
-    - `fold_1.parquet` … `fold_5.parquet`: particionan el 85 % de entrenamiento.
+    - `fold_1.parquet` … `fold_5.parquet`: particionan el 85 % de entrenamiento en
+      bloques contiguos y consecutivos de `Ltime` (fold_1 el más antiguo).
     - `test.parquet`: el 15 % restante, sellado hasta la fase 3.
     - `metadatos.json`: cortes, codificación del objetivo y decisiones de limpieza.
   Los archivos de `base/` guardan las features **sin transformar** (más `label`,
@@ -17,8 +18,8 @@ Produce, en `data/preprocessed/`:
 
 * `grid_preprocess/`
     - `<celda>/r1..r5/{train,val}.parquet`: una variante por celda y por ronda. En la
-      ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train) y se
-      aplica congelada a `train` y a `val` (el fold `f`). Contienen solo features y
+      ronda `f`, la receta se fitea con los folds distintos de `f` (fold-train), menos la
+      franja de purga (ver abajo), y se aplica congelada a `train` y a `val` (el fold `f`). Contienen solo features y
       `label`: `attack_cat`, `es_duplicado` y `Ltime` NO se escriben aquí.
     - `<celda>/r*/parametros.json`: los valores fiteados (modas, columnas log1p y
       protocolos frecuentes).
@@ -50,6 +51,16 @@ Notas de alcance
   conserva la primera aparición (la más antigua) y se marca `es_duplicado=1` si esa
   fila tenía gemelos en el origen. Filas con las mismas features pero distinta clase
   se conservan (ruido irreducible) y se agrupan en el mismo fold.
+* **Folds temporales con purga.** Los folds son bloques contiguos de `Ltime`, alineados a
+  límites de `Ltime`. Los bloques tienen el mismo número de filas (salvo el ajuste a
+  límites de `Ltime`). No se fuerza que cada clase aparezca en cada fold: una clase sin
+  ejemplos en la validación de una ronda se excluye del promedio de esa ronda (regla de
+  `common.detalle_desde_matriz`), igual para todas las celdas. Las columnas `ct_*` resumen los ~100 registros anteriores, así que
+  las filas de validación del bloque `f` ven el pasado (como el test cronológico), pero
+  las primeras filas del bloque `f+1` tienen ventanas que incluyen registros de
+  validación. Por eso, en la ronda `f`, se excluyen del fold-train los primeros
+  `--purga-registros` registros (por defecto 100) del bloque `f+1`. La purga se aplica
+  igual a todas las celdas para que el train sea idéntico entre ellas.
 * Cada `train.parquet` se limita por clase a 100,000 filas por defecto, con semilla 42.
   `--limite-por-categoria 0` lo desactiva; la validación y `base/` permanecen completas.
 * El submuestreo se aplica después de deduplicar, por lo que el límite cuenta filas
@@ -172,6 +183,7 @@ SEMILLA = 42
 LIMITE_POR_CATEGORIA_DEFAULT = 100_000
 SEMILLA_SUBMUESTREO = 42
 UMBRAL_LOG1P = 1.0
+PURGA_REGISTROS_DEFAULT = 100  # ventana de las ct_*: últimos 100 registros
 UMBRAL_PROTO = 0.001  # protocolos con < 0.1 % del fold-train pasan a "otros"
 CATEGORIA_OTROS = "otros"
 
@@ -540,28 +552,45 @@ def corte_alineado(ltime: np.ndarray, fraccion: float) -> int:
     return i
 
 
-def asignar_folds(label: np.ndarray, grupo: np.ndarray, k: int, semilla: int) -> np.ndarray:
-    """Estratificado por clase y agrupado por vista del modelo.
+def asignar_folds_temporales(ltime: np.ndarray, k: int) -> np.ndarray:
+    """Divide el train (ordenado por Ltime) en `k` bloques contiguos del mismo tamaño.
 
-    Cada grupo (filas con las mismas features del modelo; tras deduplicar solo pueden
-    diferir en la clase) cae entero en un fold, y los grupos se reparten de forma
-    codiciosa para equilibrar el recuento de cada clase entre folds.
+    Cada corte se alinea a un límite de Ltime para no partir un empate entre dos
+    bloques. El bloque 0 es el más antiguo.
     """
-    info = pd.DataFrame({"grupo": grupo, "label": label})
-    tamanos = info.groupby("grupo", observed=True).size()
-    etiqueta = info.drop_duplicates("grupo").set_index("grupo")["label"]
-    grupos = pd.DataFrame({"label": etiqueta, "tam": tamanos})
+    n = len(ltime)
+    cortes = [0]
+    for i in range(1, k):
+        cortes.append(max(corte_alineado(ltime, i / k), cortes[-1]))
+    cortes.append(n)
+    if any(cortes[i + 1] <= cortes[i] for i in range(k)):
+        raise ValueError(f"alguno de los {k} bloques temporales quedó vacío: {cortes}")
+    fold = np.empty(n, dtype=np.int8)
+    for j in range(k):
+        fold[cortes[j]:cortes[j + 1]] = j
+    return fold
 
-    asignacion: dict = {}
-    for _, sub in grupos.groupby("label", observed=True):
-        sub = sub.sample(frac=1.0, random_state=semilla).sort_values("tam", ascending=False)
-        conteo = np.zeros(k, dtype=np.int64)
-        for g, tam_g in zip(sub.index.to_numpy(), sub["tam"].to_numpy()):
-            j = int(np.argmin(conteo))
-            conteo[j] += tam_g
-            asignacion[g] = j
-    return np.fromiter((asignacion[g] for g in grupo), dtype=np.int8,
-                       count=len(grupo))
+
+def mascara_purga(fold: np.ndarray, ltime: np.ndarray, ronda: int,
+                  n_purga: int) -> np.ndarray:
+    """Filas del inicio del bloque `ronda + 1` cuyas ct_* ven registros de validación.
+
+    Se purgan los primeros `n_purga` registros del bloque siguiente a la validación,
+    extendidos hasta el final de un empate de Ltime. Las filas deben estar ordenadas por
+    Ltime (bloques contiguos). La última ronda no tiene bloque siguiente.
+    """
+    mascara = np.zeros(len(fold), dtype=bool)
+    if n_purga <= 0:
+        return mascara
+    pos = np.flatnonzero(fold == ronda + 1)
+    if len(pos) == 0:
+        return mascara
+    ultimo = int(pos[min(n_purga, len(pos)) - 1])
+    while (ultimo + 1 < len(fold) and fold[ultimo + 1] == ronda + 1
+           and ltime[ultimo + 1] == ltime[ultimo]):
+        ultimo += 1
+    mascara[int(pos[0]):ultimo + 1] = True
+    return mascara
 
 
 # ===========================================================================
@@ -575,9 +604,18 @@ def main(argv=None) -> None:
         default=LIMITE_POR_CATEGORIA_DEFAULT,
         help="máximo de filas por clase en train de cada fold; 0 desactiva",
     )
+    parser.add_argument(
+        "--purga-registros",
+        type=int,
+        default=PURGA_REGISTROS_DEFAULT,
+        help="registros del bloque siguiente a la validación que se excluyen del "
+             "train de cada ronda (ventana de las ct_*); 0 desactiva",
+    )
     args = parser.parse_args(argv)
     if args.limite_por_categoria < 0:
         parser.error("--limite-por-categoria debe ser mayor o igual a cero")
+    if args.purga_registros < 0:
+        parser.error("--purga-registros debe ser mayor o igual a cero")
 
     print("=== PREPROCESAMIENTO: split + folds + rejilla (sin entrenamiento) ===")
     print(
@@ -683,11 +721,9 @@ def main(argv=None) -> None:
 
     # ---------------- Folds ----------------
     fold = np.full(n, -1, dtype="int8")
-    fold[idx_train] = asignar_folds(
-        label[idx_train], grupo[idx_train], K, SEMILLA
-    )
+    fold[idx_train] = asignar_folds_temporales(ltime[idx_train], K)
     base["fold_id"] = fold
-    print(f"[3] folds asignados (K={K}); "
+    print(f"[3] folds temporales contiguos asignados (K={K}); "
           + " · ".join(f"f{j+1}={int((fold == j).sum()):,}" for j in range(K)))
 
     # ---------------- Persistencia de base/ ----------------
@@ -727,9 +763,24 @@ def main(argv=None) -> None:
             (GRID_PREPROC_DIR / cid / f"r{j + 1}").mkdir(parents=True, exist_ok=True)
 
     train_base = base.loc[fold >= 0].reset_index(drop=True)
+    fold_tb = train_base["fold_id"].to_numpy()
+    ltime_tb = train_base["Ltime"].to_numpy()
+    purgadas_por_ronda = {}
     for j in range(K):
-        fit_df = train_base.loc[train_base["fold_id"] != j, cols_base]
-        val_df = train_base.loc[train_base["fold_id"] == j, cols_base]
+        purga = mascara_purga(fold_tb, ltime_tb, j, args.purga_registros)
+        purgadas_por_ronda[f"r{j + 1}"] = int(purga.sum())
+        fit_df = train_base.loc[(fold_tb != j) & ~purga, cols_base]
+        val_df = train_base.loc[fold_tb == j, cols_base]
+        presentes_fit = set(fit_df[LABEL_COL].unique().tolist())
+        sin_fit = [clases[i] for i in range(len(clases)) if i not in presentes_fit]
+        sin_val = [clases[i] for i in range(len(clases))
+                   if not (val_df[LABEL_COL] == i).any()]
+        print(f"  ronda {j + 1}: purgadas {int(purga.sum()):,} filas del bloque "
+              f"{j + 2 if j + 1 < K else '-'} · fit {len(fit_df):,} · val {len(val_df):,}")
+        if sin_fit or sin_val:
+            print(f"  nota ronda {j + 1}: clases sin ejemplos en fit={sin_fit or 'ninguna'}"
+                  f" · en val={sin_val or 'ninguna'} (las ausentes en val no entran "
+                  f"al promedio de esa ronda)")
 
         # Todo lo común se calcula UNA vez por ronda.
         log1p_cols = seleccionar_log1p_cols(fit_df)
@@ -794,6 +845,13 @@ def main(argv=None) -> None:
         "proto_seleccion_fold_train_completo": True,
         "umbral_proto": UMBRAL_PROTO,
         "tamanos_folds": tamanos_fold,
+        "esquema_folds": "bloques_contiguos_por_Ltime_con_purga_posterior",
+        "purga_registros": args.purga_registros,
+        "filas_purgadas_por_ronda": purgadas_por_ronda,
+        "rango_ltime_folds": {
+            f"fold_{j + 1}": [int(ltime[fold == j].min()), int(ltime[fold == j].max())]
+            for j in range(K)
+        },
         # Nombres originales, tal como quedan en base/. En la rejilla los nombres están
         # normalizados y sport/dsport se reemplazan por sport_franja/dsport_franja.
         "columnas_features": features,

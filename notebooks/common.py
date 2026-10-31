@@ -179,15 +179,17 @@ def detalle_desde_matriz(
             "TP": tp, "TN": tn, "FP": fp, "FN": fn,
             "precision": precision, "recall": recall, "F1": f1,
         })
-
-    n = len(filas)
+    
     correctos = sum(matriz.get((i, i), 0) for i in indices)
+    con_soporte = [f for f in filas if f["support"] > 0]
+    n = len(con_soporte)
     resumen = {
         "accuracy": correctos / total if total else 0.0,
-        "promedio_precision": sum(f["precision"] for f in filas) / n if n else 0.0,
-        "promedio_recall": sum(f["recall"] for f in filas) / n if n else 0.0,
-        "promedio_F1": sum(f["F1"] for f in filas) / n if n else 0.0,
+        "promedio_precision": sum(f["precision"] for f in con_soporte) / n if n else 0.0,
+        "promedio_recall": sum(f["recall"] for f in con_soporte) / n if n else 0.0,
+        "promedio_F1": sum(f["F1"] for f in con_soporte) / n if n else 0.0,
     }
+
     absoluta = [[matriz.get((real, pred), 0) for pred in indices] for real in indices]
     normalizada = [
         [
