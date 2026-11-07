@@ -1,8 +1,9 @@
 .agents/
 .example-datasets/
 **/raw/UNSW*
-results/
-logs/
+**/checkpoints
+**/_inputs
+**/predicciones.parquet
 src/benchmark-local.py
 dataset/
 $tmp/

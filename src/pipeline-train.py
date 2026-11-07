@@ -59,6 +59,22 @@ DEFAULT_OUT = BASE / "results"
 CHECKPOINT_VERSION = 5
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
+EXIT_REINICIO = 75
+LIMITE_HEAP_MB = 0
+
+
+def _verificar_memoria(spark, contexto):
+    antes, despues = train.limpiar_memoria(spark)
+    LOGGER.info(
+        "memoria %s heap_antes_mb=%s heap_despues_mb=%s",
+        contexto, antes, despues,
+    )
+    if LIMITE_HEAP_MB and despues > LIMITE_HEAP_MB:
+        LOGGER.warning(
+            "reinicio_por_memoria %s heap_mb=%s limite_mb=%s",
+            contexto, despues, LIMITE_HEAP_MB,
+        )
+        raise SystemExit(EXIT_REINICIO)
 
 
 def _preparar_fold_con_log(spark, ronda, escala, *, fase, iteracion, celda):
@@ -114,6 +130,16 @@ def _evaluar_fold_con_log(fold, modelo, params, escala, *,
     return metricas
 
 
+def _entero_positivo(valor: str) -> int:
+    try:
+        entero = int(valor)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("debe ser un entero positivo") from error
+    if entero < 1:
+        raise argparse.ArgumentTypeError("debe ser un entero positivo")
+    return entero
+
+
 def _args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--grid", type=Path, default=DEFAULT_GRID)
@@ -140,6 +166,14 @@ def _args(argv=None):
     parser.add_argument("--master", default="local[*]")
     parser.add_argument("--driver-memory")
     parser.add_argument("--shuffle-partitions", type=int, default=32)
+    parser.add_argument(
+        "--reiniciar-sobre-mb", type=int, default=0,
+        help="sale con código 75 si el heap, tras limpiar, supera este valor (0 = desactivado)",
+    )
+    parser.add_argument(
+        "--svm-parallelism", type=_entero_positivo, default=5,
+        help="número de clasificadores binarios paralelos en SVM One-vs-Rest (default: 5)",
+    )
     return parser.parse_args(argv)
 
 
@@ -165,7 +199,11 @@ def _firma(args, params_base: dict, params_grid: dict, escala: bool) -> str:
         "metadatos": _hash_archivo(args.base / "metadatos.json"),
         "manifiesto": _hash_archivo(args.grid / "manifiesto.csv"),
         "escala": escala,
-        "paralelismo_ovr": common.PARALELISMO_OVR,
+        # El valor histórico (3) se conserva en firmas de ejecuciones sin SVM,
+        # para que cambiar este parámetro no invalide checkpoints de logreg/RF.
+        "paralelismo_ovr": (
+            common.PARALELISMO_OVR if "svm" in args.modelos else 3
+        ),
     }
     return hashlib.sha1(
         json.dumps(contenido, sort_keys=True).encode("utf-8")
@@ -276,6 +314,39 @@ def _escribir_csv(ruta, filas):
         escritor.writerows(filas)
 
 
+def _leer_csv_de_otros_modelos(ruta: Path, modelos: list[str]) -> list[dict]:
+    if not ruta.exists():
+        return []
+    with ruta.open(newline="", encoding="utf-8") as fh:
+        return [fila for fila in csv.DictReader(fh) if fila.get("modelo") not in modelos]
+
+
+def _leer_ganadores_de_otros_modelos(ruta: Path, modelos: list[str]) -> dict:
+    if not ruta.exists():
+        return {}
+    return {
+        modelo: resultado
+        for modelo, resultado in json.loads(ruta.read_text(encoding="utf-8")).items()
+        if modelo not in modelos
+    }
+
+
+def _limpiar_checkpoints_modelos(root: Path, fase: int, modelos: list[str]) -> None:
+    carpeta = root / f"fase_{fase}"
+    if fase == 1:
+        if carpeta.exists():
+            for celda in carpeta.iterdir():
+                if celda.is_dir():
+                    for modelo in modelos:
+                        shutil.rmtree(celda / modelo, ignore_errors=True)
+    elif fase == 2:
+        for modelo in modelos:
+            shutil.rmtree(carpeta / modelo, ignore_errors=True)
+    elif fase == 3:
+        for modelo in modelos:
+            (carpeta / f"{modelo}.json").unlink(missing_ok=True)
+
+
 def _orden_seleccion(fila):
     return (
         fila["promedio_F1"],
@@ -354,13 +425,14 @@ def _fases_a_limpiar(fases: set[int]) -> set[int]:
     return limpiar
 
 
-def _preparar_checkpoints(root: Path, firma: str, fases, *, reanudar):
+def _preparar_checkpoints(root: Path, firma: str, fases, *, modelos, reanudar):
     ruta_firma = root / "firma.json"
     firma_anterior = None
     if ruta_firma.exists():
         firma_anterior = json.loads(ruta_firma.read_text(encoding="utf-8")).get("firma")
     existentes = root.exists() and any(p.is_file() for p in root.rglob("*"))
     fases_a_limpiar = _fases_a_limpiar(set(fases))
+    firma_cambio = existentes and firma_anterior != firma
     if reanudar:
         if existentes:
             if firma_anterior is None:
@@ -379,8 +451,12 @@ def _preparar_checkpoints(root: Path, firma: str, fases, *, reanudar):
                 f"prerrequisito {sorted(fases_prerequisito)} podrían ser incompatibles; "
                 "ejecute también esas fases antes de continuar"
             )
-        for fase in fases_a_limpiar:
-            shutil.rmtree(root / f"fase_{fase}", ignore_errors=True)
+        if firma_cambio:
+            for fase in (1, 2, 3):
+                shutil.rmtree(root / f"fase_{fase}", ignore_errors=True)
+        else:
+            for fase in fases_a_limpiar:
+                _limpiar_checkpoints_modelos(root, fase, modelos)
     root.mkdir(parents=True, exist_ok=True)
     _escribir_json(ruta_firma, {"firma": firma})
 
@@ -490,6 +566,7 @@ def _fase1(spark, grid, modelos, params_base, destino, escala, *,
                         iteracion, celda.name, ronda.name,
                         "completado" if fold_completado else "fallido",
                     )
+                _verificar_memoria(spark, f"fase=1 celda={celda.name} fold={ronda.name}")
         else:
             LOGGER.info(
                 "inicio_celda fase=1 iteracion=%s celda=%s unidades_pendientes=0",
@@ -631,6 +708,9 @@ def _fase2(spark, grid, modelos, ganadores, fase1_filas, params_grid, destino, e
                         iteracion, celda_nombre, ronda.name,
                         "completado" if fold_completado else "fallido",
                     )
+                _verificar_memoria(
+                    spark, f"fase=2 celda={celda_nombre} fold={ronda.name}"
+                )
         else:
             LOGGER.info(
                 "inicio_celda fase=2 iteracion=%s celda=%s unidades_pendientes=0",
@@ -791,6 +871,9 @@ def _iteraciones(args):
 def main(argv=None):
     argumentos_recibidos = list(sys.argv[1:] if argv is None else argv)
     args = _args(argv)
+    global LIMITE_HEAP_MB
+    LIMITE_HEAP_MB = args.reiniciar_sobre_mb
+    common.PARALELISMO_OVR = args.svm_parallelism
     logging.basicConfig(
         level=logging.WARNING,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -806,7 +889,7 @@ def main(argv=None):
     LOGGER.info("hiperparametros=%s", args.hiperparametros)
     LOGGER.info(
         "configuracion_spark master=%s driver_memory_arg=%s shuffle_partitions=%s "
-        "paralelismo_ovr=%s "
+        "paralelismo_svm=%s "
         "fases=%s iteracion=%s iteraciones=%s "
         "modelos=%s celdas=%s rondas=%s reanudar=%s no_escala=%s",
         args.master, args.driver_memory or "default",
@@ -839,20 +922,39 @@ def main(argv=None):
             if not fases_iter:
                 continue
             _preparar_checkpoints(
-                checkpoint_root, firma, fases_iter, reanudar=args.reanudar,
+                checkpoint_root, firma, fases_iter, modelos=args.modelos,
+                reanudar=args.reanudar,
             )
 
             if 1 in fases_iter:
                 inicio_fase = time.perf_counter()
                 LOGGER.info("inicio_fase iteracion=%s fase=1", iteracion)
+                ruta_fase1 = raiz / "fase_1"
+                previas_fold = _leer_csv_de_otros_modelos(
+                    ruta_fase1 / "resultado_por_fold.csv", args.modelos
+                )
+                previas_resumen = _leer_csv_de_otros_modelos(
+                    ruta_fase1 / "resumen_general.csv", args.modelos
+                )
+                previos_ganadores = _leer_ganadores_de_otros_modelos(
+                    ruta_fase1 / "ganadores.json", args.modelos
+                )
                 params_fase1 = _params_fase1(args, params_base, iteracion)
                 fase1, _ = _fase1(
                     spark, args.grid, args.modelos, params_fase1,
-                    raiz / "fase_1", escala,
+                    ruta_fase1, escala,
                     checkpoint_root=checkpoint_root, iteracion=iteracion,
                     celdas=args.celdas, rondas_sel=args.rondas,
                 )
-                _escribir_json(raiz / "fase_1" / "ganadores.json", fase1)
+                nuevas_fold = list(csv.DictReader(
+                    (ruta_fase1 / "resultado_por_fold.csv").open(encoding="utf-8")
+                ))
+                nuevos_resumen = list(csv.DictReader(
+                    (ruta_fase1 / "resumen_general.csv").open(encoding="utf-8")
+                ))
+                _escribir_csv(ruta_fase1 / "resultado_por_fold.csv", previas_fold + nuevas_fold)
+                _escribir_csv(ruta_fase1 / "resumen_general.csv", previas_resumen + nuevos_resumen)
+                _escribir_json(ruta_fase1 / "ganadores.json", {**previos_ganadores, **fase1})
                 LOGGER.info(
                     "fin_fase iteracion=%s fase=1 duracion_s=%.1f",
                     iteracion, time.perf_counter() - inicio_fase,
@@ -861,17 +963,35 @@ def main(argv=None):
             if 2 in fases_iter:
                 inicio_fase = time.perf_counter()
                 LOGGER.info("inicio_fase iteracion=%s fase=2", iteracion)
+                ruta_fase2 = raiz / "fase_2"
+                previas_fold = _leer_csv_de_otros_modelos(
+                    ruta_fase2 / "resultado_por_fold.csv", args.modelos
+                )
+                previas_resumen = _leer_csv_de_otros_modelos(
+                    ruta_fase2 / "resumen_general.csv", args.modelos
+                )
+                previos_ganadores = _leer_ganadores_de_otros_modelos(
+                    ruta_fase2 / "ganadores.json", args.modelos
+                )
                 ganadores_fase1 = _cargar_ganadores(
                     raiz / "fase_1" / "ganadores.json"
                 )
                 fase1_filas = _cargar_filas_fase1(checkpoint_root, args.modelos)
                 ganadores = _fase2(
                     spark, args.grid, args.modelos, ganadores_fase1,
-                    fase1_filas, params_grid, raiz / "fase_2", escala,
+                    fase1_filas, params_grid, ruta_fase2, escala,
                     checkpoint_root=checkpoint_root, iteracion=iteracion,
                     rondas_sel=args.rondas,
                 )
-                _escribir_json(raiz / "fase_2" / "ganadores.json", ganadores)
+                nuevas_fold = list(csv.DictReader(
+                    (ruta_fase2 / "resultado_por_fold.csv").open(encoding="utf-8")
+                ))
+                nuevos_resumen = list(csv.DictReader(
+                    (ruta_fase2 / "resumen_general.csv").open(encoding="utf-8")
+                ))
+                _escribir_csv(ruta_fase2 / "resultado_por_fold.csv", previas_fold + nuevas_fold)
+                _escribir_csv(ruta_fase2 / "resumen_general.csv", previas_resumen + nuevos_resumen)
+                _escribir_json(ruta_fase2 / "ganadores.json", {**previos_ganadores, **ganadores})
                 LOGGER.info(
                     "fin_fase iteracion=%s fase=2 duracion_s=%.1f",
                     iteracion, time.perf_counter() - inicio_fase,

@@ -204,6 +204,11 @@ impresa por ambos jobs.
 El entrenamiento guarda un checkpoint por fold en
 `results/iteracion_N/checkpoints/`. Para repartir el trabajo en varios jobs:
 
+El paralelismo de los clasificadores binarios de SVM One-vs-Rest se controla con
+`--svm-parallelism` (entero positivo). El pipeline usa 5 por defecto y
+`02_kfoldcv.slurm` lo pasa mediante `SVM_PARALLELISM`, también con valor por defecto 5.
+En una ejecución local se puede reducir, por ejemplo, con `--svm-parallelism 3`.
+
 ```bash
 # Solo fase 1, iteración 1
 FASES="1" ITERACION=1 sbatch slurm/02_kfoldcv.slurm

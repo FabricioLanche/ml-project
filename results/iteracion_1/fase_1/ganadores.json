@@ -1,0 +1,35 @@
+{
+  "rf": {
+    "modelo": "rf",
+    "celda": "G05",
+    "params": "{\"featureSubsetStrategy\": \"sqrt\", \"impurity\": \"gini\", \"maxBins\": 32, \"maxDepth\": 18, \"minInstancesPerNode\": 1, \"numTrees\": 100, \"pesoClases\": \"ninguno\", \"seed\": 42}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.6480462851421827,
+    "promedio_recall": 0.6714989669153117,
+    "promedio_precision": 0.7182247827672454,
+    "DS_F1": 0.19695068368643767,
+    "accuracy": 0.9799372419057482
+  },
+  "logreg": {
+    "modelo": "logreg",
+    "celda": "G04",
+    "params": "{\"elasticNetParam\": 0.0, \"family\": \"multinomial\", \"maxIter\": 500, \"pesoClases\": \"ninguno\", \"regParam\": 0.0, \"standardization\": false, \"tol\": 1e-06}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.571162781627936,
+    "promedio_recall": 0.6055699823992564,
+    "promedio_precision": 0.6326236270559216,
+    "DS_F1": 0.24233130587599253,
+    "accuracy": 0.9774597491567085
+  },
+  "svm": {
+    "modelo": "svm",
+    "celda": "G02",
+    "params": "{\"maxIter\": 500, \"pesoClases\": \"ninguno\", \"regParam\": 0.0, \"standardization\": false, \"tol\": 1e-06}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.5587357908670855,
+    "promedio_recall": 0.5957780471965664,
+    "promedio_precision": 0.5477894542469463,
+    "DS_F1": 0.24946603302151052,
+    "accuracy": 0.9767538805772038
+  }
+}

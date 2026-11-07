@@ -1,0 +1,144 @@
+2026-11-06 03:49:02 INFO comando argv=['src/pipeline-train.py', '--fase', '1', '--modelos', 'svm', '--reanudar', '--master', 'local[8]', '--driver-memory', '6g', '--svm-parallelism', '3']
+2026-11-06 03:49:02 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-06 03:49:02 INFO configuracion_spark master=local[8] driver_memory_arg=6g shuffle_partitions=32 paralelismo_svm=3 fases=[1] iteracion=None iteraciones=1 modelos=['svm'] celdas=todas rondas=todas reanudar=True no_escala=False
+2026-11-06 03:49:02 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/06 03:49:08 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/06 03:49:08 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/06 03:49:09 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-06 03:49:14 INFO inicio_fase iteracion=1 fase=1
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G00 fold=r1 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G00 fold=r2 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G00 fold=r3 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G00 fold=r4 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G00 fold=r5 modelo=svm
+2026-11-06 03:49:14 INFO inicio_celda fase=1 iteracion=1 celda=G00 unidades_pendientes=0
+2026-11-06 03:49:14 INFO fin_celda fase=1 iteracion=1 celda=G00 duracion_s=0.0
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G01 fold=r1 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G01 fold=r2 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G01 fold=r3 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G01 fold=r4 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G01 fold=r5 modelo=svm
+2026-11-06 03:49:14 INFO inicio_celda fase=1 iteracion=1 celda=G01 unidades_pendientes=0
+2026-11-06 03:49:14 INFO fin_celda fase=1 iteracion=1 celda=G01 duracion_s=0.0
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G02 fold=r1 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G02 fold=r2 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G02 fold=r3 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G02 fold=r4 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G02 fold=r5 modelo=svm
+2026-11-06 03:49:14 INFO inicio_celda fase=1 iteracion=1 celda=G02 unidades_pendientes=0
+2026-11-06 03:49:14 INFO fin_celda fase=1 iteracion=1 celda=G02 duracion_s=0.1
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G03 fold=r1 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G03 fold=r2 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G03 fold=r3 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G03 fold=r4 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G03 fold=r5 modelo=svm
+2026-11-06 03:49:14 INFO inicio_celda fase=1 iteracion=1 celda=G03 unidades_pendientes=0
+2026-11-06 03:49:14 INFO fin_celda fase=1 iteracion=1 celda=G03 duracion_s=0.1
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G04 fold=r1 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G04 fold=r2 modelo=svm
+2026-11-06 03:49:14 INFO checkpoint_reutilizado fase=1 iteracion=1 celda=G04 fold=r3 modelo=svm
+2026-11-06 03:49:14 INFO inicio_celda fase=1 iteracion=1 celda=G04 unidades_pendientes=2
+2026-11-06 03:49:14 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G04 fold=r4
+26/11/06 03:49:21 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+2026-11-06 03:49:25 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G04 fold=r4 duracion_s=12.5
+2026-11-06 03:49:25 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G04 fold=r4 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+netlib-blas: JNI_OnLoad: dlopen(libblas.so.3) failed: libblas.so.3: cannot open shared object file: No such file or directory
+26/11/06 03:49:33 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 03:54:47 INFO fin_entrenamiento fase=1 iteracion=1 celda=G04 fold=r4 modelo=svm hiperparametro=- duracion_s=340.8
+2026-11-06 03:54:47 INFO memoria fase=1 celda=G04 fold=r4 heap_tras_gc_mb=777 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 03:54:47 INFO fin_fold fase=1 iteracion=1 celda=G04 fold=r4 estado=completado
+2026-11-06 03:54:47 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G04 fold=r5
+2026-11-06 03:54:52 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G04 fold=r5 duracion_s=4.7
+2026-11-06 03:54:52 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G04 fold=r5 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+2026-11-06 04:00:18 INFO fin_entrenamiento fase=1 iteracion=1 celda=G04 fold=r5 modelo=svm hiperparametro=- duracion_s=346.5
+2026-11-06 04:00:19 INFO memoria fase=1 celda=G04 fold=r5 heap_tras_gc_mb=1466 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:00:19 INFO fin_fold fase=1 iteracion=1 celda=G04 fold=r5 estado=completado
+2026-11-06 04:00:19 INFO fin_celda fase=1 iteracion=1 celda=G04 duracion_s=705.5
+2026-11-06 04:00:19 INFO inicio_celda fase=1 iteracion=1 celda=G05 unidades_pendientes=5
+2026-11-06 04:00:19 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r1
+2026-11-06 04:00:25 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r1 duracion_s=5.8
+2026-11-06 04:00:25 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G05 fold=r1 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+26/11/06 04:00:30 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:00:31 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:01:10 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:04:17 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 04:05:55 INFO fin_entrenamiento fase=1 iteracion=1 celda=G05 fold=r1 modelo=svm hiperparametro=- duracion_s=351.0
+2026-11-06 04:05:56 INFO memoria fase=1 celda=G05 fold=r1 heap_tras_gc_mb=2189 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:05:56 INFO fin_fold fase=1 iteracion=1 celda=G05 fold=r1 estado=completado
+2026-11-06 04:05:56 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r2
+2026-11-06 04:06:01 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r2 duracion_s=4.6
+2026-11-06 04:06:01 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G05 fold=r2 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+26/11/06 04:06:09 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:06:24 ERROR Utils: Uncaught exception in thread executor-heartbeater
+java.lang.NullPointerException: Cannot invoke "java.util.concurrent.ConcurrentHashMap.isEmpty()" because the return value of "org.apache.spark.sql.util.PartitionKeyedAccumulator.byPartition()" is null
+	at org.apache.spark.sql.util.PartitionKeyedAccumulator.isZero(PartitionKeyedAccumulator.scala:51)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$2(Executor.scala:1536)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$2$adapted(Executor.scala:1536)
+	at scala.collection.immutable.Vector.filterImpl(Vector.scala:166)
+	at scala.collection.immutable.Vector.filterImpl(Vector.scala:116)
+	at scala.collection.StrictOptimizedIterableOps.filterNot(StrictOptimizedIterableOps.scala:220)
+	at scala.collection.StrictOptimizedIterableOps.filterNot$(StrictOptimizedIterableOps.scala:220)
+	at scala.collection.immutable.Vector.filterNot(Vector.scala:116)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$1(Executor.scala:1536)
+	at scala.collection.IterableOnceOps.foreach(IterableOnce.scala:630)
+	at scala.collection.IterableOnceOps.foreach$(IterableOnce.scala:628)
+	at scala.collection.AbstractIterable.foreach(Iterable.scala:936)
+	at org.apache.spark.executor.Executor.reportHeartBeat(Executor.scala:1530)
+	at org.apache.spark.executor.Executor.$anonfun$heartbeater$1(Executor.scala:484)
+	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
+	at org.apache.spark.util.Utils$.logUncaughtExceptions(Utils.scala:1963)
+	at org.apache.spark.Heartbeater$$anon$1.run(Heartbeater.scala:46)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358)
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+26/11/06 04:08:58 WARN HeartbeatReceiver: Removing executor driver with no recent heartbeats: 163594 ms exceeds timeout 120000 ms
+26/11/06 04:08:58 WARN SparkContext: Killing executors is not supported by current scheduler.
+26/11/06 04:08:59 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:11:53 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:11:55 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 04:12:15 INFO fin_entrenamiento fase=1 iteracion=1 celda=G05 fold=r2 modelo=svm hiperparametro=- duracion_s=396.9
+2026-11-06 04:12:16 INFO memoria fase=1 celda=G05 fold=r2 heap_tras_gc_mb=2905 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:12:16 INFO fin_fold fase=1 iteracion=1 celda=G05 fold=r2 estado=completado
+2026-11-06 04:12:16 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r3
+2026-11-06 04:12:19 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r3 duracion_s=4.3
+2026-11-06 04:12:19 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G05 fold=r3 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+26/11/06 04:12:59 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:13:02 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:13:20 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:13:23 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:15:49 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 04:18:15 INFO fin_entrenamiento fase=1 iteracion=1 celda=G05 fold=r3 modelo=svm hiperparametro=- duracion_s=377.5
+2026-11-06 04:18:16 INFO memoria fase=1 celda=G05 fold=r3 heap_tras_gc_mb=2922 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:18:16 INFO fin_fold fase=1 iteracion=1 celda=G05 fold=r3 estado=completado
+2026-11-06 04:18:16 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r4
+2026-11-06 04:18:20 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r4 duracion_s=4.8
+2026-11-06 04:18:20 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G05 fold=r4 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+26/11/06 04:22:54 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:22:58 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:23:00 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:23:03 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:23:05 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+26/11/06 04:23:06 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 04:23:18 INFO fin_entrenamiento fase=1 iteracion=1 celda=G05 fold=r4 modelo=svm hiperparametro=- duracion_s=315.5
+2026-11-06 04:23:19 INFO memoria fase=1 celda=G05 fold=r4 heap_tras_gc_mb=3496 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:23:19 INFO fin_fold fase=1 iteracion=1 celda=G05 fold=r4 estado=completado
+2026-11-06 04:23:19 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r5
+2026-11-06 04:23:23 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G05 fold=r5 duracion_s=4.1
+2026-11-06 04:23:23 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G05 fold=r5 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+26/11/06 04:26:49 ERROR OWLQN: Failure! Resetting history: breeze.optimize.NaNHistory: 
+2026-11-06 04:29:42 INFO fin_entrenamiento fase=1 iteracion=1 celda=G05 fold=r5 modelo=svm hiperparametro=- duracion_s=401.3
+2026-11-06 04:29:43 INFO memoria fase=1 celda=G05 fold=r5 heap_tras_gc_mb=3510 rdds_persistidos=0 almacenamiento_mb=0
+2026-11-06 04:29:43 INFO fin_fold fase=1 iteracion=1 celda=G05 fold=r5 estado=completado
+2026-11-06 04:29:43 INFO fin_celda fase=1 iteracion=1 celda=G05 duracion_s=1870.9
+2026-11-06 04:29:43 INFO inicio_celda fase=1 iteracion=1 celda=G06 unidades_pendientes=5
+2026-11-06 04:29:43 INFO inicio_preparacion_fold fase=1 iteracion=1 celda=G06 fold=r1
+2026-11-06 04:29:47 INFO fin_preparacion_fold fase=1 iteracion=1 celda=G06 fold=r1 duracion_s=5.9
+2026-11-06 04:29:47 INFO inicio_entrenamiento fase=1 iteracion=1 celda=G06 fold=r1 modelo=svm hiperparametro=- params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}

@@ -1,0 +1,34 @@
+2026-11-05 17:47:49 INFO comando argv=['src/pipeline-train.py', '--fase', '3', '--modelos', 'rf', '--master', 'local[8]', '--driver-memory', '8g']
+2026-11-05 17:47:49 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-05 17:47:49 INFO configuracion_spark master=local[8] driver_memory_arg=8g shuffle_partitions=32 paralelismo_ovr=3 fases=[3] iteracion=None iteraciones=1 modelos=['rf'] celdas=todas rondas=todas reanudar=False no_escala=False
+2026-11-05 17:47:49 INFO entorno python=3.12.3 pyspark=4.1.2 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/05 17:47:51 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/05 17:47:51 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/05 17:47:51 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-05 17:47:54 INFO inicio_fase iteracion=1 fase=3
+2026-11-05 17:47:54 INFO inicio_entrenamiento_final iteracion=1 modelo=rf celda=G05
+2026-11-05 17:47:54 ERROR fallo_entrenamiento_final iteracion=1 modelo=rf celda=G05 error_tipo=ModuleNotFoundError error=No module named 'pyarrow'
+2026-11-05 17:47:54 INFO cierre_spark
+Traceback (most recent call last):
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pipeline-train.py", line 977, in <module>
+    main()
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pipeline-train.py", line 961, in main
+    _fase3(
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pipeline-train.py", line 791, in _fase3
+    train_path, test_path = _materializar_final(
+                            ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pipeline-train.py", line 749, in _materializar_final
+    pre = _cargar_preprocess()
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pipeline-train.py", line 738, in _cargar_preprocess
+    spec.loader.exec_module(modulo)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/mnt/c/Users/ADMIN/Desktop/ml-project/src/pre-process.py", line 87, in <module>
+    import pyarrow.parquet as pq
+ModuleNotFoundError: No module named 'pyarrow'

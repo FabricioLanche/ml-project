@@ -1,0 +1,38 @@
+{
+  "logreg": {
+    "modelo": "logreg",
+    "celda": "G04",
+    "hiperparametro": "hiperparametro_1",
+    "params": "{\"elasticNetParam\": 0.0, \"family\": \"multinomial\", \"maxIter\": 500, \"pesoClases\": \"raiz\", \"regParam\": 0.0, \"standardization\": false, \"tol\": 1e-06}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.5903653201233909,
+    "promedio_recall": 0.6884463013734011,
+    "promedio_precision": 0.5603039283595802,
+    "DS_F1": 0.23064979581436995,
+    "accuracy": 0.9766825984581093
+  },
+  "rf": {
+    "modelo": "rf",
+    "celda": "G05",
+    "hiperparametro": "hiperparametro_11",
+    "params": "{\"featureSubsetStrategy\": \"onethird\", \"impurity\": \"gini\", \"maxBins\": 32, \"maxDepth\": 25, \"minInstancesPerNode\": 1, \"numTrees\": 100, \"pesoClases\": \"balanceado\", \"seed\": 42}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.6941772469870873,
+    "promedio_recall": 0.769398265414801,
+    "promedio_precision": 0.6807840240400509,
+    "DS_F1": 0.17123346830069783,
+    "accuracy": 0.9798972604404412
+  },
+  "svm": {
+    "modelo": "svm",
+    "celda": "G02",
+    "hiperparametro": "hiperparametro_1",
+    "params": "{\"maxIter\": 500, \"pesoClases\": \"raiz\", \"regParam\": 0.0, \"standardization\": false, \"tol\": 1e-06}",
+    "reutilizado_fase_1": false,
+    "promedio_F1": 0.5636139641726949,
+    "promedio_recall": 0.6392950941619835,
+    "promedio_precision": 0.5417365036816754,
+    "DS_F1": 0.24611333680247088,
+    "accuracy": 0.9753572200754619
+  }
+}

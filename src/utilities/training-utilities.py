@@ -31,7 +31,7 @@ CONTROL = (
 )
 
 ALGOS = ("logreg", "rf", "svm")
-PARALELISMO_OVR = 3
+PARALELISMO_OVR = 5
 
 _HYPERPARAMS_PATH = Path(__file__).with_name("hyperparams-config.py")
 _HYPERPARAMS_SPEC = importlib.util.spec_from_file_location(

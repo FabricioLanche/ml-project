@@ -1,0 +1,12 @@
+2026-11-05 22:22:35 INFO comando argv=['src/pipeline-train.py', '--fase', '1', '--modelos', 'svm', '--reanudar', '--master', 'local[8]', '--driver-memory', '6g', '--svm-parallelism', '3']
+2026-11-05 22:22:35 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-05 22:22:35 INFO configuracion_spark master=local[8] driver_memory_arg=6g shuffle_partitions=32 paralelismo_svm=3 fases=[1] iteracion=None iteraciones=1 modelos=['svm'] celdas=todas rondas=todas reanudar=True no_escala=False
+2026-11-05 22:22:35 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/05 22:22:51 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/05 22:22:51 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/05 22:22:52 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable

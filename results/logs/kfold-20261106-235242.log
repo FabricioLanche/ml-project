@@ -1,0 +1,55 @@
+2026-11-06 23:52:54 INFO comando argv=['src/pipeline-train.py', '--fase', '2', '--modelos', 'svm', '--reanudar', '--master', 'local[8]', '--driver-memory', '6g', '--svm-parallelism', '3', '--reiniciar-sobre-mb', '3000']
+2026-11-06 23:52:54 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-06 23:52:54 INFO configuracion_spark master=local[8] driver_memory_arg=6g shuffle_partitions=32 paralelismo_svm=3 fases=[2] iteracion=None iteraciones=1 modelos=['svm'] celdas=todas rondas=todas reanudar=True no_escala=False
+2026-11-06 23:52:54 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/06 23:53:06 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/06 23:53:06 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/06 23:53:07 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-06 23:53:12 INFO inicio_fase iteracion=1 fase=2
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_1
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_1
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_2
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_2
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_3
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_3
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_4
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_4
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_5
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_5
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_6
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_6
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_7
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_7
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_8
+2026-11-06 23:53:13 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r2 modelo=svm hiperparametro=hiperparametro_8
+2026-11-06 23:53:13 INFO inicio_celda fase=2 iteracion=1 celda=G02 unidades_pendientes=24
+2026-11-06 23:53:13 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G02 fold=r3
+26/11/06 23:53:21 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+2026-11-06 23:53:25 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G02 fold=r3 duracion_s=12.4
+2026-11-06 23:53:25 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'raiz'}
+26/11/06 23:53:24 WARN BlockManager: Block rdd_94_0 already exists on this machine; not re-adding it
+netlib-blas: JNI_OnLoad: dlopen(libblas.so.3) failed: libblas.so.3: cannot open shared object file: No such file or directory
+2026-11-06 23:59:30 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_1 duracion_s=396.5
+2026-11-06 23:59:30 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'balanceado'}
+2026-11-07 00:04:50 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_2 duracion_s=345.1
+2026-11-07 00:04:50 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+2026-11-07 00:09:18 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_3 duracion_s=290.3
+2026-11-07 00:09:18 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'raiz'}
+2026-11-07 00:14:57 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_4 duracion_s=368.3
+2026-11-07 00:14:57 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'balanceado'}
+2026-11-07 00:20:38 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_5 duracion_s=368.6
+2026-11-07 00:20:38 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+2026-11-07 00:24:50 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_6 duracion_s=274.9
+2026-11-07 00:24:50 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'raiz'}
+2026-11-07 00:30:00 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_7 duracion_s=334.4
+2026-11-07 00:30:00 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'balanceado'}
+2026-11-07 00:35:55 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r3 modelo=svm hiperparametro=hiperparametro_8 duracion_s=384.4
+2026-11-07 00:35:55 INFO fin_fold fase=2 iteracion=1 celda=G02 fold=r3 estado=completado
+2026-11-07 00:36:06 INFO memoria fase=2 celda=G02 fold=r3 heap_antes_mb=3308 heap_despues_mb=3297
+2026-11-07 00:36:06 WARNING reinicio_por_memoria fase=2 celda=G02 fold=r3 heap_mb=3297 limite_mb=3000
+2026-11-07 00:36:06 INFO cierre_spark

@@ -9,6 +9,7 @@
 #   FASES="2" ITERACION=1 REANUDAR=1 sbatch slurm/02_kfoldcv.slurm
 #   FASES="1" ITERACION=1 CELDA=G03 sbatch slurm/02_kfoldcv.slurm
 #   FASES="1" ITERACION=1 MODELOS="logreg rf" RONDAS="1 3" sbatch slurm/02_kfoldcv.slurm
+#   SVM_PARALLELISM=5 sbatch slurm/02_kfoldcv.slurm
 
 #SBATCH --job-name=unsw-kfold
 #SBATCH --partition=standard
@@ -32,6 +33,7 @@ ITERACION="${ITERACION:-}"
 FASES="${FASES:-1 2 3}"
 REANUDAR="${REANUDAR:-0}"
 SHUFFLE_PARTITIONS="${SHUFFLE_PARTITIONS:-64}"
+SVM_PARALLELISM="${SVM_PARALLELISM:-5}"
 # Debe quedar por debajo de los 96G asignados por Slurm para dejar margen
 # al proceso Python y al overhead de Spark.
 DRIVER_MEMORY="${DRIVER_MEMORY:-72g}"
@@ -111,9 +113,11 @@ echo "Fases: $FASES"
 echo "Iteraciones: ${ITERACION:-$ITERACIONES}"
 echo "Reanudar: $REANUDAR"
 echo "Driver memory: $DRIVER_MEMORY"
+echo "SVM parallelism: $SVM_PARALLELISM"
 
 args=(--fase "${fases_array[@]}" --driver-memory "$DRIVER_MEMORY"
-      --shuffle-partitions "$SHUFFLE_PARTITIONS")
+      --shuffle-partitions "$SHUFFLE_PARTITIONS"
+      --svm-parallelism "$SVM_PARALLELISM")
 if [[ -n "$CELDA" ]]; then
     args+=(--celdas "$CELDA")
 fi
