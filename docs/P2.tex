@@ -74,42 +74,43 @@ christopher.perez@utec.edu.pe}
 
 \maketitle
 
+
 \begin{abstract}
-Este proyecto analiza el dataset UNSW-NB15 para desarrollar y evaluar modelos de Machine Learning capaces de clasificar tráfico de red en distintas categorías de ataques, considerando el desbalance de clases, la calidad de los datos y las características más relevantes para la detección de intrusiones.
+Este trabajo aborda la detección de intrusiones mediante la clasificación multiclase de tráfico de red utilizando el dataset UNSW-NB15. Se comparan tres modelos de aprendizaje supervisado: regresión logística como baseline, SVM lineal y Random Forest, con el objetivo de distinguir tráfico benigno y nueve familias de ataques. La metodología contempla preprocesamiento de datos, validación cruzada de cinco particiones y evaluación sobre un conjunto de prueba reservado. Debido al desbalance entre categorías, se prioriza el F1-score macro, complementado con precisión, recall y matrices de confusión. [Pendiente el mejor modelo, su resultado cuantitativo y conclusión]
 \end{abstract}
 
 \begin{IEEEkeywords}
-UNSW-NB15, clasificación, ciberseguridad, EDA.
+UNSW-NB15, detección de intrusiones, clasificación multiclase, Machine Learning.
 \end{IEEEkeywords}
+
+\section{Introducción y formulación del problema}
 
 \subsection{Motivación y relevancia del problema}
 
-La detección de intrusiones en redes constituye un problema relevante en ciberseguridad por la frecuencia y diversidad de las amenazas actuales. Según el \textit{ENISA Threat Landscape 2025} \cite{enisa2025}, los ataques DDoS representaron aproximadamente el 77\,\% de los incidentes reportados, mientras que el ransomware destacó por su impacto. Además, el phishing estuvo involucrado en el 60\,\% de los puntos iniciales de intrusión, seguido por la explotación de vulnerabilidades con un 21,3\,\%. Estas cifras reflejan que las amenazas difieren tanto en sus mecanismos como en sus consecuencias, por lo que detectarlas no solo implica distinguir el tráfico benigno del malicioso, sino también identificar qué tipo de ataque se está produciendo.
+La detección de intrusiones constituye un desafío relevante en ciberseguridad debido a la diversidad de amenazas, como ataques de denegación de servicio, explotación de vulnerabilidades y accesos no autorizados \cite{enisa2025}. Distinguir únicamente entre tráfico benigno y malicioso resulta insuficiente para caracterizar estas amenazas, pues identificar su categoría específica permite orientar el análisis de incidentes y las posibles respuestas de seguridad.
 
-En este contexto, la clasificación multiclase permite caracterizar con mayor precisión los flujos maliciosos y aportar información útil para analizar los incidentes y orientar la respuesta. Para estudiar esta tarea se utilizará el dataset \textbf{UNSW-NB15}, cuyos registros describen las características y el comportamiento de conexiones de red. En particular, se empleará \texttt{attack\_cat} como variable objetivo, que identifica el tráfico benigno y nueve familias de ataques.
+En este contexto, el dataset UNSW-NB15 proporciona registros de conexiones de red etiquetados, permitiendo desarrollar modelos capaces de reconocer diferentes comportamientos de ataque. Sin embargo, el desbalance entre categorías y la similitud de ciertos patrones de tráfico representan desafíos para su clasificación y generalización.
 
 \subsection{Formulación del problema y objetivo de ML}
 
-El problema consiste en clasificar los flujos de tráfico de red según su naturaleza y, en particular, identificar la familia a la que pertenece cada ataque, en lugar de limitarse a distinguir entre tráfico benigno y malicioso. Esta tarea requiere aprender patrones de comunicación que permitan diferenciar comportamientos de ataque y generalizar a flujos no observados durante el entrenamiento, con el propósito de aportar información útil para el análisis de incidentes de seguridad.
+El objetivo es desarrollar y comparar modelos de aprendizaje supervisado capaces de clasificar cada flujo de UNSW-NB15 en una de diez categorías: tráfico legítimo (\texttt{Benign}) o una de nueve familias de ataques, utilizando \texttt{attack\_cat} como variable objetivo \cite{moustafa2015unsw,moustafa2016evaluation}.
 
-Para ello, se empleará aprendizaje supervisado sobre el dataset UNSW-NB15, que proporciona etiquetas de referencia (\textit{ground truth}) en la variable \texttt{attack\_cat} \cite{moustafa2015unsw}. El objetivo es entrenar un modelo de clasificación multiclase que asigne cada flujo a una de diez categorías, correspondientes al tráfico normal (\texttt{Benign}) y a nueve familias de ataques cibernéticos: \texttt{Generic}, \texttt{Exploits}, \texttt{Fuzzers}, \texttt{DoS}, \texttt{Reconnaissance}, \texttt{Analysis}, \texttt{Backdoors}, \texttt{Shellcode} y \texttt{Worms} \cite{moustafa2016evaluation}.
+Se busca determinar la capacidad discriminativa de las características del tráfico y evaluar el desempeño de los clasificadores sobre datos no observados durante el entrenamiento, considerando especialmente las clases minoritarias.
+
 
 \subsection{Preguntas de investigación}
 
-\textbf{Pregunta de investigación principal:}
-
+\noindent\textbf{Pregunta de investigación principal.}
 ¿En qué medida las características de los flujos de tráfico de red del dataset UNSW-NB15 permiten clasificar correctamente cada registro como una de las distintas categorías de ataque mediante técnicas de Machine Learning?
 
-\textbf{Preguntas de investigación específicas:}
-
+\noindent\textbf{Preguntas de investigación específicas.}
 \begin{itemize}
     \item ¿Qué características del tráfico de red presentan mayor relación con la categoría de ataque identificada por \texttt{attack\_cat}?
-    
     \item ¿Existen categorías de tráfico que presenten patrones similares y, por lo tanto, sean más difíciles de distinguir entre sí?
-    
     \item ¿Cómo influye la distribución de las clases en la capacidad de identificar correctamente las distintas categorías de tráfico?
 \end{itemize}
-\FloatBarrier
+
+
 
 \section{Datos y Análisis Exploratorio de Datos (EDA)}
 
@@ -221,7 +222,7 @@ Adicionales & \texttt{ct\_srv\_src} & 9.21 & 5.00 & 117.44 & 1.00 & 67.00 \\
 
 \subsection{Problemas de calidad y outliers}
 
-Además de los faltantes, se identificaron 480\,633 copias excedentes de filas idénticas en todas las columnas (18.92\,\% del total). Estos duplicados se concentran especialmente en \texttt{Generic} (88.22\,\%), \texttt{DoS} (65.36\,\%) y \texttt{Exploits} (38.01\,\%), frente al 11.67\,\% de \texttt{Benign}. Las copias comparten también las marcas de tiempo y los contadores \texttt{ct\_*}; por ello, el CSV no permite concluir que representen flujos independientes de una misma ráfaga. Su presencia sí da mayor peso a ciertos registros y altera de forma desigual la distribución de clases. El preprocesamiento conserva una instancia de cada fila idéntica antes de realizar las particiones.
+Además de los faltantes, se identificaron 480\,633 filas duplicadas equivalentes al 18.92\,\% del total. Estos duplicados se concentran especialmente en \texttt{Generic} (88.22\,\%), \texttt{DoS} (65.36\,\%) y \texttt{Exploits} (38.01\,\%), frente al 11.67\,\% de \texttt{Benign}. Esta distribución es consistente con el carácter sintético de varias familias de ataque, cuyos flujos pueden repetirse de forma idéntica en ráfagas, mientras que el tráfico benigno presenta mayor diversidad. Por tanto, la duplicación afecta de forma desigual a las clases, puede reforzar artificialmente ciertos patrones y sobreestimar el desempeño si observaciones idénticas aparecen tanto en entrenamiento como en prueba.
 
 La cardinalidad de las variables nominales también revela particularidades del escenario de captura. Las direcciones \texttt{srcip} y \texttt{dstip} presentan apenas 43 y 47 valores únicos, respectivamente, lo que apunta a una diversidad limitada de hosts. En cambio, \texttt{sport} y \texttt{dsport} alcanzan 64\,598 y 64\,627 valores únicos, mientras que \texttt{proto}, \texttt{state} y \texttt{service} contienen solo 135, 16 y 13 categorías. Esta combinación puede llevar a los modelos a asociar las clases con hosts o puertos específicos en lugar de con el comportamiento de los ataques, limitando su generalización a otras redes.
 
@@ -258,7 +259,7 @@ donde $\bar{y}_{g}$ y $n_{g}$ son la media y el número de observaciones de la c
 \end{table}
 
 
-La Fig.~\ref{fig:correlacion} reúne las asociaciones entre predictores y target, así como las relaciones de redundancia entre variables. Entre los contadores, \texttt{ct\_state\_ttl} (0.874) y \texttt{ct\_dst\_src\_ltm} (0.440) son los más asociados con el target. Al recalcular $\eta^2$ dando un solo peso a cada fila única, \texttt{ct\_state\_ttl} disminuye de 0.78 a 0.50 y \texttt{ct\_srv\_src} cae de 0.28 a 0.12. Esto muestra que la asociación medida depende en parte de la multiplicidad de los registros repetidos; no permite atribuir esa diferencia a flujos independientes de una ráfaga.
+La Fig.~\ref{fig:correlacion} reúne las asociaciones entre predictores y target, así como las relaciones de redundancia entre variables. Entre los contadores, \texttt{ct\_state\_ttl} (0.874) y \texttt{ct\_dst\_src\_ltm} (0.440) son los más asociados con el target. Sin embargo, esta señal puede reflejar tanto el comportamiento de los ataques como la repetición de flujos en las ráfagas capturadas. Al recalcular $\eta^2$ sin duplicados, \texttt{ct\_state\_ttl} disminuye de 0.78 a 0.50 y \texttt{ct\_srv\_src} cae de 0.28 a 0.12, lo que sugiere que parte de la capacidad discriminativa de los contadores depende de la composición de las ráfagas y no solo de patrones propios de cada clase.
 
 % [CAMBIO] [!tb] -> [!b]: la figura solo puede ir al pie, nunca encima de la tabla
 \begin{figure}[!b]
@@ -275,11 +276,11 @@ La matriz también evidencia redundancia entre predictores. Las correlaciones en
 
 \subsection{Sesgo y data leakage}
 
-El análisis exploratorio muestra que el dataset presenta características que condicionan la comparación entre modelos. Existe un marcado desbalance de clases: el 87.35\,\% de los registros corresponde a tráfico \texttt{Benign}, mientras que \texttt{Worms} cuenta con apenas 174 observaciones. Por ello, la exactitud global resulta insuficiente y es necesario considerar métricas desagregadas por clase. Al eliminar las copias exactas antes de particionar, la proporción de \texttt{Benign} aumenta a 95.16\,\%, pues las repeticiones se concentran más en algunas clases de ataque. Esta limpieza evita que copias idénticas cuenten como ejemplos independientes, aunque reduce aún más la representación relativa de los ataques; por ello, se reporta el rendimiento por clase.
+El análisis exploratorio muestra que el dataset presenta características que condicionan la comparación entre modelos. Existe un marcado desbalance de clases: el 87.35\,\% de los registros corresponde a tráfico \texttt{Benign}, mientras que \texttt{Worms} cuenta con apenas 174 observaciones. Por ello, la exactitud global resulta insuficiente y es necesario considerar métricas desagregadas por clase. La presencia de duplicados implica un compromiso entre preservar la representación de las familias de ataque y evitar una sobreestimación del desempeño. Conservarlos mantendría la distribución original, mientras que eliminarlos elevaría \texttt{Benign} al 95.16\,\%. Sin embargo, conservarlos también puede inflar las métricas al contabilizar varias veces un mismo flujo.
 
 El origen controlado de la captura introduce otros sesgos que pueden limitar la generalización. Las direcciones IP presentan apenas 43 y 47 valores distintos, mientras que los puertos rondan los 64\,000, lo que puede facilitar asociaciones entre hosts, puertos y clases que difícilmente se mantendrían en una red real. Las variables numéricas presentan colas largas y numerosos valores atípicos, especialmente en \texttt{Sload}, \texttt{Sjit} y \texttt{dur} (Fig.~\ref{fig:boxplot}). También existe redundancia entre variables, con correlaciones de 1.00 entre \texttt{Stime} y \texttt{Ltime}, de 0.997 entre \texttt{swin} y \texttt{dwin}, y de 0.96 entre \texttt{sbytes} y \texttt{sloss}. Asimismo, la capacidad discriminativa se concentra en pocas variables: solo \texttt{sttl} y \texttt{ct\_state\_ttl} alcanzan una razón $\eta^2$ superior a 0.7, mientras que otras variables \texttt{ct\_*} y \texttt{dttl} presentan valores entre 0.22 y 0.32 (Tabla~\ref{tab:eta}). En conjunto, el aprendizaje puede depender de un subconjunto reducido de variables y de patrones específicos de la captura, en lugar de reflejar características generalizables del tráfico.
 
-La fuga de información constituye un problema distinto, pues puede producir estimaciones que no reflejan la capacidad real de generalización. \texttt{attack\_cat} y \texttt{label} codifican la misma información, por lo que incluirlas como entradas permitiría acceder directamente a la respuesta. De forma similar, las direcciones IP, los puertos sin transformar y \texttt{Stime}/\texttt{Ltime} pueden inducir asociaciones espurias al reflejar la identidad de los hosts o el instante de captura. Las variables \texttt{ct\_*} requieren un matiz adicional: al contabilizar conexiones en ventanas de 100 flujos que incluyen la observación actual, pueden calcularse al cierre de cada conexión sin recurrir necesariamente a información futura. Para impedir que copias idénticas crucen particiones, se eliminan antes del split cronológico; además, los grupos de predictores iguales se mantienen juntos al asignar los folds.
+La fuga de información constituye un problema distinto, pues puede producir estimaciones que no reflejan la capacidad real de generalización. \texttt{attack\_cat} y \texttt{label} codifican la misma información, por lo que incluirlas como entradas permitiría acceder directamente a la respuesta. De forma similar, las direcciones IP, los puertos sin transformar y \texttt{Stime}/\texttt{Ltime} pueden inducir asociaciones espurias al reflejar la identidad de los hosts o el instante de captura. Las variables \texttt{ct\_*} requieren un matiz adicional: al contabilizar conexiones en ventanas de 100 flujos que incluyen la observación actual, pueden calcularse al cierre de cada conexión sin recurrir necesariamente a información futura. El riesgo reside en la partición, pues si una misma ráfaga aparece en entrenamiento y prueba, el modelo podría aprender su composición en lugar de reconocer patrones generalizables de los ataques. Los duplicados exactos agravan este problema bajo una partición aleatoria, pues una misma observación puede aparecer en ambos conjuntos y favorecer una sobreestimación del desempeño.
 
 
 \section{Preprocesamiento e ingeniería de características}
@@ -292,11 +293,62 @@ La detección de intrusiones en red se aborda bajo el paradigma de aprendizaje s
 Para evaluar la discriminación del tráfico de red, se seleccionan clasificadores de distinta naturaleza estructural, siguiendo precedentes en la literatura sobre UNSW-NB15 \cite{more2024enhanced}:
 \begin{enumerate}
     \item \textbf{Regresión Logística Multinomial (Baseline):} Clasificador lineal que sirve como referencia base para evaluar el sesgo de linealidad en los datos.
-    \item \textbf{Máquina de Vectores de Soporte (SVM):} Modelo no lineal orientado a la maximización del margen de separación en espacios de alta dimensión.
+    \item \textbf{Máquina de Vectores de Soporte (SVM):} Clasificador lineal que maximiza el margen de separación entre clases, adaptado a la clasificación multiclase mediante la estrategia One-vs-Rest (OvR).
     \item \textbf{Random Forest:} Método de ensamble basado en \textit{Bagging} (\textit{Bootstrap Aggregating}) que combina múltiples árboles de decisión, reduciendo varianza y capturando interacciones complejas entre predictores.
 \end{enumerate}
 
+
 \section{Diseño experimental y evaluación}
+
+\subsection{Protocolo de evaluación}
+
+Se aborda una clasificación supervisada de diez categorías de tráfico. El conjunto de datos se divide cronológicamente mediante \texttt{Ltime}: aproximadamente el 85\,\% se destina a entrenamiento y validación, y el 15\,\% restante a prueba final. Sobre el primer conjunto se aplica validación cruzada de cinco particiones (\textit{5-fold CV}), con equilibrio aproximado por clase y agrupación de registros duplicados para reducir la fuga de información. En cada iteración se entrena con cuatro particiones y se valida en la restante. Este procedimiento permite seleccionar el preprocesamiento y los hiperparámetros sin utilizar el conjunto de prueba \cite{repo}.
+
+\subsection{Definición y justificación de métricas}
+
+El desbalance de UNSW-NB15, donde el 87.35\,\% de los registros corresponde a \texttt{Benign}, hace insuficiente evaluar los clasificadores únicamente mediante exactitud global (\textit{accuracy}). Un modelo que predijera siempre la clase mayoritaria alcanzaría una exactitud elevada sin identificar ninguna familia de ataque. Por ello, se adopta el F1-score macro como métrica principal, complementado con precisión, recall y matrices de confusión.
+
+Para cada clase $c$, se evalúan sus predicciones mediante un enfoque \textit{One-vs-Rest}. Se definen los verdaderos positivos ($TP_c$), falsos positivos ($FP_c$) y falsos negativos ($FN_c$). A partir de ellos se calculan:
+
+\begin{equation}
+\begin{aligned}
+P_c &= \frac{TP_c}{TP_c+FP_c}, \qquad
+R_c = \frac{TP_c}{TP_c+FN_c},\\
+F1_c &= \frac{2P_cR_c}{P_c+R_c}.
+\end{aligned}
+\end{equation}
+
+La precisión ($P_c$) mide la proporción de predicciones positivas correctas y permite cuantificar falsas alarmas, que pueden consumir recursos de análisis. El recall ($R_c$) representa la proporción de flujos reales de una categoría correctamente detectados. Un recall bajo implica falsos negativos, particularmente preocupantes cuando ataques no son identificados como su categoría real. El F1-score combina ambas métricas mediante su media armónica, penalizando los desequilibrios entre precisión y recall.
+
+Para las $C=10$ categorías se emplea el promedio macro:
+
+\begin{equation}
+M_{\mathrm{macro}}=
+\frac{1}{C}\sum_{c=1}^{C}M_c,
+\quad M\in\{P,R,F1\}.
+\end{equation}
+
+A diferencia del promedio micro, que agrega las predicciones de todas las clases, y del promedio ponderado, que considera su frecuencia, el promedio macro otorga igual importancia a cada categoría. Esto evita que el desempeño sobre \texttt{Benign} domine la evaluación y permite valorar ataques minoritarios como \texttt{Worms}. Sin embargo, el F1 macro no distingue la gravedad de confundir dos familias de ataque frente a clasificar un ataque como tráfico benigno. Por ello, se complementa con recall por clase y matrices de confusión, que permiten identificar errores específicos y categorías difíciles de distinguir.
+
+\subsection{Agregación y selección de modelos}
+
+El desempeño de cada configuración se resume mediante la media y desviación estándar muestral del F1 macro entre las $K=5$ particiones:
+
+\begin{equation}
+\begin{aligned}
+\overline{F1} &= \frac{1}{K}
+\sum_{j=1}^{K}F1_j,\\
+s_{F1} &= \sqrt{
+\frac{\sum_{j=1}^{K}(F1_j-\overline{F1})^2}
+{K-1}}.
+\end{aligned}
+\end{equation}
+
+La media resume el rendimiento entre particiones, mientras que la desviación estándar permite evaluar su estabilidad: valores menores indican resultados más consistentes, aunque no garantizan una mejor generalización.
+
+El script \texttt{k-foldCV.py} selecciona las configuraciones mediante un criterio lexicográfico: mayor F1 macro promedio, seguido de mayor recall macro, mayor precisión macro y menor desviación estándar de F1. Se comparan diez variantes de preprocesamiento y posteriormente los hiperparámetros de cada algoritmo. Finalmente, los modelos seleccionados se reentrenan y evalúan sobre el conjunto de prueba reservado \cite{repo}.
+
+
 \section{Resultados y análisis}
 \section{Discusión y limitaciones}
 \section{Conclusiones}
