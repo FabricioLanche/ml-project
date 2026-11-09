@@ -31,7 +31,7 @@ ml-project/
 │   ├── raw/              # CSVs originales de UNSW-NB15
 │   ├── eda/              # Salidas del EDA (no del entrenamiento)
 │   │   ├── tablas/       # Tablas *.csv
-│   │   └── figuras/      # Figuras *.png
+│   │   └── figs/         # Figuras *.png
 │   └── preprocessed/     # Entrada del flujo de entrenamiento
 │       ├── base/         # Split 85/15 + folds, features sin transformar
 │       ├── grid_preprocess/  # Variantes de preprocesamiento por celda
@@ -89,7 +89,7 @@ necesita residir íntegro en memoria.
    python -m pip install -r requirements.txt
    ```
 
-2. Ejecutar el análisis exploratorio (genera las tablas en `data/eda/tablas/` y las figuras en `data/eda/figuras/`):
+2. Ejecutar el análisis exploratorio (genera las tablas en `data/eda/tablas/` y las figuras en `data/eda/figs/`):
 
    - Ejecutar el análisis exploratorio desde el script:
 

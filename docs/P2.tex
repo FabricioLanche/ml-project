@@ -8,6 +8,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{placeins}
+\usepackage{multirow}
 \usepackage{float}
 \usepackage{stfloats} % permite figure* con [b] (doble columna abajo); se carga después de float
 \usepackage{url}
@@ -76,7 +77,7 @@ christopher.perez@utec.edu.pe}
 
 
 \begin{abstract}
-Este trabajo aborda la detección de intrusiones mediante la clasificación multiclase de tráfico de red utilizando el dataset UNSW-NB15. Se comparan tres modelos de aprendizaje supervisado: regresión logística como baseline, SVM lineal y Random Forest, con el objetivo de distinguir tráfico benigno y nueve familias de ataques. La metodología contempla preprocesamiento de datos, validación cruzada de cinco particiones y evaluación sobre un conjunto de prueba reservado. Debido al desbalance entre categorías, se prioriza el F1-score macro, complementado con precisión, recall y matrices de confusión. [Pendiente el mejor modelo, su resultado cuantitativo y conclusión]
+Este trabajo aborda la detección de intrusiones mediante la clasificación multiclase de tráfico de red utilizando el dataset UNSW-NB15. Se comparan tres modelos de aprendizaje supervisado: regresión logística como baseline, SVM lineal y Random Forest, con el objetivo de distinguir tráfico benigno y nueve familias de ataques. La metodología contempla preprocesamiento de datos, validación cruzada de cinco particiones y evaluación sobre un conjunto de prueba reservado. Debido al desbalance entre categorías, se prioriza el macro F1, complementado con precisión, recall y matrices de confusión. [Pendiente el mejor modelo, su resultado cuantitativo y conclusión]
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -262,7 +263,7 @@ donde $\bar{y}_{g}$ y $n_{g}$ son la media y el número de observaciones de la c
 La Fig.~\ref{fig:correlacion} reúne las asociaciones entre predictores y target, así como las relaciones de redundancia entre variables. Entre los contadores, \texttt{ct\_state\_ttl} (0.874) y \texttt{ct\_dst\_src\_ltm} (0.440) son los más asociados con el target. Sin embargo, esta señal puede reflejar tanto el comportamiento de los ataques como la repetición de flujos en las ráfagas capturadas. Al recalcular $\eta^2$ sin duplicados, \texttt{ct\_state\_ttl} disminuye de 0.78 a 0.50 y \texttt{ct\_srv\_src} cae de 0.28 a 0.12, lo que sugiere que parte de la capacidad discriminativa de los contadores depende de la composición de las ráfagas y no solo de patrones propios de cada clase.
 
 % [CAMBIO] [!tb] -> [!b]: la figura solo puede ir al pie, nunca encima de la tabla
-\begin{figure}[!b]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\columnwidth,trim=10 10 10 10,clip]{output/fig03_correlacion_seleccion.png}
 \caption{Matriz de correlación de Pearson entre variables seleccionadas y el target binario.}
@@ -282,8 +283,49 @@ El origen controlado de la captura introduce otros sesgos que pueden limitar la 
 
 La fuga de información constituye un problema distinto, pues puede producir estimaciones que no reflejan la capacidad real de generalización. \texttt{attack\_cat} y \texttt{label} codifican la misma información, por lo que incluirlas como entradas permitiría acceder directamente a la respuesta. De forma similar, las direcciones IP, los puertos sin transformar y \texttt{Stime}/\texttt{Ltime} pueden inducir asociaciones espurias al reflejar la identidad de los hosts o el instante de captura. Las variables \texttt{ct\_*} requieren un matiz adicional: al contabilizar conexiones en ventanas de 100 flujos que incluyen la observación actual, pueden calcularse al cierre de cada conexión sin recurrir necesariamente a información futura. El riesgo reside en la partición, pues si una misma ráfaga aparece en entrenamiento y prueba, el modelo podría aprender su composición en lugar de reconocer patrones generalizables de los ataques. Los duplicados exactos agravan este problema bajo una partición aleatoria, pues una misma observación puede aparecer en ambos conjuntos y favorecer una sobreestimación del desempeño.
 
-
 \section{Preprocesamiento e ingeniería de características}
+
+El preprocesamiento combina un conjunto estático de transformaciones, aplicado por igual a todos los modelos, con un conjunto reducido de transformaciones variables cuya selección se resuelve durante el entrenamiento.
+
+\subsection{Transformaciones aplicadas}
+
+\begin{enumerate}
+
+\item \textbf{Variable objetivo.} Se unifican las categorías de \texttt{attack\_cat} que presentan grafías inconsistentes pero designan inequívocamente una misma clase. Así, los registros etiquetados como ``\texttt{Backdoor}'' se integran en ``\texttt{Backdoors}''.
+
+\item \textbf{Selección de variables.} Se excluyen \texttt{Label}, que codifica el mismo objetivo en forma binaria, \texttt{attack\_cat}, \texttt{srcip} y \texttt{dstip}, que identifican a los hosts, y \texttt{Stime} y \texttt{Ltime}, que son marcas de tiempo absolutas. El conjunto resultante contiene 43 variables, cinco categóricas y 38 numéricas.
+
+\item \textbf{Deduplicación.} Tras ordenar por \texttt{Ltime}, se conserva la primera aparición de cada registro y se descartan las copias idénticas en todos los campos, incluida la clase, lo que reduce el conjunto de 2\,540\,047 a 2\,030\,029 registros.
+
+\item \textbf{Valores faltantes.} Las ausencias estructurales de \texttt{is\_ftp\_login}, \texttt{ct\_ftp\_cmd} y \texttt{ct\_flw\_http\_mthd} se rellenan con 0 o \texttt{False}, mientras que los tokens corruptos de \texttt{dsport} (109), \texttt{sport} (8) y \texttt{state} (3) se imputan con la moda de la porción de entrenamiento.
+
+\item \textbf{Variables categóricas.} Los puertos \texttt{sport} y \texttt{dsport}, con unos 65\,000 valores únicos cada uno, se sustituyen por su franja IANA, que distingue puerto bien conocido ($\leq 1023$), registrado (de 1024 a 49151), dinámico (de 49152 a 65535) y desconocido. En \texttt{proto}, los protocolos con frecuencia inferior al 0.1\,\% y los no vistos en entrenamiento se agrupan en \texttt{otros}, mientras que \texttt{state} y \texttt{service} conservan su cardinalidad.
+
+\item \textbf{Variables numéricas y escala.} Se calcula el coeficiente de asimetría muestral
+\begin{equation}
+g_1 = \frac{n}{(n-1)(n-2)}
+\sum_{i=1}^{n}\left(\frac{x_i-\bar{x}}{s}\right)^3,
+\end{equation}
+donde $\bar{x}$ es la media, $s$ la desviación típica muestral y $n$ el número de observaciones. A las variables con $|g_1|>1$ se les aplica $\ln(1+\max(x,0))$, lo que estabiliza las colas largas. Durante el entrenamiento, las categóricas se codifican mediante one-hot y todas las variables se escalan dividiéndolas por su desviación típica.
+
+\item \textbf{Variables de ventana y razones de asimetría.} A diferencia de las transformaciones anteriores, estas dos no se fijan de antemano, sino que se tratan como decisiones sometidas a evaluación y se resuelven con base en los resultados del entrenamiento que se describe más adelante. La primera consiste en retirar o conservar las variables \texttt{ct\_*}. La segunda consiste en incorporar la razón $(a-b)/(a+b)$ calculada sobre paquetes, bytes, ambos o ninguno.
+
+\end{enumerate}
+
+\subsection{Justificación de las decisiones}
+
+\textbf{Fuga de información.} La exclusión de \texttt{Label}, \texttt{attack\_cat}, las direcciones IP y las marcas de tiempo impide que el modelo acceda a la respuesta o memorice hosts y sesiones de captura. Del mismo modo, estimar con la porción de entrenamiento toda transformación dependiente de los datos evita que estadísticas del conjunto de evaluación influyan en la representación.
+
+\textbf{Duplicados y desbalance.} Los registros eliminados coinciden en todos los campos, incluidos los conteos \texttt{ct\_*} y las marcas \texttt{Stime} y \texttt{Ltime}, por lo que constituyen copias exactas de una misma observación y no ráfagas de ataque con flujo parcialmente compartido, como un DDoS. Conservarlas sobrerrepresentaría patrones idénticos y permitiría que una misma observación apareciera en entrenamiento y prueba, razón por la cual se eliminan antes de cualquier partición. La deduplicación eleva la proporción de \texttt{Benign} del 87.35\,\% al 95.63\,\% y deja a \texttt{Worms} con 171 registros, desbalance que se aborda en el modelado mediante pesos de clase y evaluación con F1 macro.
+
+\textbf{Cardinalidad y sesgo.} Reducir los puertos a su franja y agrupar la cola de \texttt{proto} evita decenas de miles de columnas one-hot y disminuye el riesgo de que puertos o protocolos poco frecuentes se asocien con clases concretas, una forma de sesgo por memorización.
+
+\textbf{Asimetría y escala.} Los valores extremos forman parte de la distribución natural del tráfico y no son errores de captura, por lo que la transformación logarítmica atenúa su influencia sin eliminarlos. El escalado posterior evita que las variables de mayor magnitud dominen los modelos lineales, y omitir el centrado preserva la dispersión del vector one-hot.
+
+\textbf{Valores faltantes.} En las variables estructurales, el nulo no es un dato perdido sino la ausencia de la condición que define la variable, de modo que equivale a ``sin inicio de sesión FTP'', ``sin comandos FTP'' o ``sin método HTTP''. Por ello se emplea cero o \texttt{False} en lugar de la moda, que introduciría actividad inexistente. En \texttt{sport}, \texttt{dsport} y \texttt{state}, en cambio, los valores ilegibles sí son datos perdidos. Dado que son muy pocos, se imputan con la moda, que conserva una categoría real y mantiene la distribución observada sin crear categorías artificiales.
+
+\textbf{Variables de ventana y razones de asimetría.} Al dejarse abiertas, estas dos decisiones se distinguen del resto del preprocesamiento, que corrige defectos de los datos como valores erróneos, ausentes o duplicados. Aquí, en cambio, la calidad del registro no está en juego y lo que se modifica es la información disponible para el modelo. Retirar \texttt{ct\_*} elimina los conteos agregados de la ventana previa, mientras que añadir las razones incorpora información derivada de columnas ya presentes. Por esta razón, su efecto depende del tipo de clasificador. En los modelos lineales, las variables se combinan de forma aditiva y la regularización responde a la colinealidad entre los conteos. En los árboles, en cambio, se explotan umbrales e interacciones, y el muestreo de variables altera el peso relativo de cada señal.
+
 \section{Metodología y modelos}
 
 \subsection{Formulación del aprendizaje y justificación del enfoque}
@@ -297,18 +339,76 @@ Para evaluar la discriminación del tráfico de red, se seleccionan clasificador
     \item \textbf{Random Forest:} Método de ensamble basado en \textit{Bagging} (\textit{Bootstrap Aggregating}) que combina múltiples árboles de decisión, reduciendo varianza y capturando interacciones complejas entre predictores.
 \end{enumerate}
 
-
 \section{Diseño experimental y evaluación}
 
 \subsection{Protocolo de evaluación}
 
-Se aborda una clasificación supervisada de diez categorías de tráfico. El conjunto de datos se divide cronológicamente mediante \texttt{Ltime}: aproximadamente el 85\,\% se destina a entrenamiento y validación, y el 15\,\% restante a prueba final. Sobre el primer conjunto se aplica validación cruzada de cinco particiones (\textit{5-fold CV}), con equilibrio aproximado por clase y agrupación de registros duplicados para reducir la fuga de información. En cada iteración se entrena con cuatro particiones y se valida en la restante. Este procedimiento permite seleccionar el preprocesamiento y los hiperparámetros sin utilizar el conjunto de prueba \cite{repo}.
+El protocolo busca seleccionar el preprocesamiento y los hiperparámetros de un clasificador supervisado de diez categorías de tráfico sin que el conjunto de prueba intervenga en ninguna decisión. Para ello, una vez deduplicado, el conjunto se divide cronológicamente según \texttt{Ltime}, de modo que cerca del 85\,\% se destina a entrenamiento y validación, mientras que el 15\,\% restante se reserva para la prueba final. Sobre la porción de entrenamiento se aplica una validación cruzada de cinco bloques temporales contiguos, en la que cada ronda valida con un bloque y entrena con los cuatro restantes. Como las variables \texttt{ct\_*} resumen los 100 registros previos a cada observación, se excluyen del entrenamiento los primeros 100 registros del bloque posterior al de validación, cuya ventana incluiría registros de validación. Además, cada \textit{fold-train} se limita a 100\,000 filas por clase, mientras que la validación y la prueba no se submuestrean. Este esquema se ejecuta en dos etapas encadenadas, en las que primero se compara el preprocesamiento con hiperparámetros fijos y luego se ajustan los hiperparámetros sobre el preprocesamiento elegido, tras lo cual el modelo se reentrena con todo el conjunto entrenamiento y se evalúa una única vez sobre la prueba (Fig.~\ref{fig:train_methodology}).
 
+\begin{figure}[!t]
+\centering
+\textbf{Pipeline de entrenamiento}\\[0.5ex]
+\includegraphics[width=0.9\columnwidth,keepaspectratio]{output/train-methodology.png}
+\caption{Metodología en tres fases. La primera compara las variantes de preprocesamiento, la segunda ajusta los hiperparámetros de cada modelo y la tercera reentrena con todo el entrenamiento y evalúa sobre prueba.}
+\label{fig:train_methodology}
+\end{figure}
+
+En la primera etapa, la grilla de preprocesamiento de la Tabla~\ref{tab:grilla_preprocesamiento} contiene ocho celdas que resultan de cruzar la conservación o exclusión de las variables \texttt{ct\_*} con la incorporación de razones de asimetría sobre paquetes, bytes, ambos o ninguno. Cada celda conserva las transformaciones comunes descritas en la sección de preprocesamiento y varía únicamente estos dos ejes, lo que se refleja en el número de variables de la última columna.
+
+\begin{table}[!t]
+\centering
+\caption{Grilla de preprocesamiento.}
+\label{tab:grilla_preprocesamiento}
+\footnotesize
+\begin{tabular}{@{}lccr@{}}
+\hline
+\textbf{Celda} & \textbf{\texttt{ct\_*}} & \textbf{Asimetría} & \textbf{Variables} \\
+\hline
+G00 & Sí & Ninguna & 43 \\
+G01 & No & Ninguna & 33 \\
+G02 & Sí & Paquetes & 44 \\
+G03 & No & Paquetes & 34 \\
+G04 & Sí & Bytes & 44 \\
+G05 & No & Bytes & 34 \\
+G06 & Sí & Paquetes y bytes & 45 \\
+G07 & No & Paquetes y bytes & 35 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Grilla de hiperparámetros por modelo.}
+\label{tab:grilla_hiperparametros}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}p{1.4cm}p{2.2cm}p{2.6cm}r@{}}
+\hline
+\textbf{Modelo} & \textbf{Eje} & \textbf{Valores} & \textbf{Celdas} \\
+\hline
+\multirow{2}{=}{Regresión logística}
+ & Regularización & $0$, $10^{-4}$, $10^{-2}$ & \multirow{2}{*}{9} \\
+ & Peso de clases & ninguno, raíz, balanceado & \\
+\hline
+\multirow{3}{=}{Random Forest}
+ & Profundidad máx. & 12, 18, 25 & \multirow{3}{*}{12} \\
+ & Variables por nodo & \texttt{sqrt}, \texttt{onethird} & \\
+ & Peso de clases & ninguno, balanceado & \\
+\hline
+\multirow{2}{=}{SVM lineal}
+ & Regularización & $0$, $10^{-4}$, $10^{-2}$ & \multirow{2}{*}{9} \\
+ & Peso de clases & ninguno, raíz, balanceado & \\
+\hline
+\end{tabular}
+\end{table}
+
+En la segunda etapa, el preprocesamiento queda fijo en la celda ganadora y se evalúa una grilla de hiperparámetros por modelo, cuyas celdas son el producto cartesiano de los valores de cada eje (Tabla~\ref{tab:grilla_hiperparametros}), lo que da nueve celdas para regresión logística, doce para Random Forest y nueve para SVM. Los ejes se restringen a los parámetros que más condicionan la capacidad de cada modelo, y el resto se mantiene en sus valores base para acotar el costo computacional de la validación cruzada. En los modelos lineales se varía la regularización, que gobierna el compromiso entre sesgo y varianza y, en el SVM, también la estabilidad del optimizador. En Random Forest se varían la profundidad máxima, que limita la complejidad de cada árbol, y la estrategia de selección de variables por nodo, que regula la correlación entre árboles y, con ello, la varianza del ensamble. A estos ejes se añade el peso de clases que, aunque no es un hiperparámetro en sentido estricto, pues pondera la contribución de cada clase en la función de pérdida o en el criterio de impureza sin alterar la estructura del modelo, se trata como un eje más de la grilla porque corrige el desbalance y, por tanto, incide directamente en el macro F1. En regresión logística y SVM se consideran los esquemas ninguno, raíz y balanceado, con pesos proporcionales a $1$, $1/\sqrt{\mathrm{frecuencia}}$ y $1/\mathrm{frecuencia}$, respectivamente, mientras que en Random Forest solo se emplean ninguno y balanceado.
+
+\FloatBarrier
 \subsection{Definición y justificación de métricas}
 
-El desbalance de UNSW-NB15, donde el 87.35\,\% de los registros corresponde a \texttt{Benign}, hace insuficiente evaluar los clasificadores únicamente mediante exactitud global (\textit{accuracy}). Un modelo que predijera siempre la clase mayoritaria alcanzaría una exactitud elevada sin identificar ninguna familia de ataque. Por ello, se adopta el F1-score macro como métrica principal, complementado con precisión, recall y matrices de confusión.
-
-Para cada clase $c$, se evalúan sus predicciones mediante un enfoque \textit{One-vs-Rest}. Se definen los verdaderos positivos ($TP_c$), falsos positivos ($FP_c$) y falsos negativos ($FN_c$). A partir de ellos se calculan:
+El desbalance del conjunto de entrenamiento, que concentra el 96.11\,\% de los registros en \texttt{Benign}, vuelve insuficiente la exactitud global (\textit{accuracy}), pues un modelo que predijera siempre la clase mayoritaria la alcanzaría en un valor elevado sin identificar ninguna familia de ataque. Por ello se adopta el macro F1 como métrica principal, complementada con precisión, recall y matrices de confusión. Cada clase $c$ se evalúa con un enfoque \textit{One-vs-Rest} a partir de sus verdaderos positivos ($TP_c$), falsos positivos ($FP_c$) y falsos negativos ($FN_c$), con los que se obtienen la precisión, el recall y el F1 por clase según
 
 \begin{equation}
 \begin{aligned}
@@ -318,9 +418,7 @@ F1_c &= \frac{2P_cR_c}{P_c+R_c}.
 \end{aligned}
 \end{equation}
 
-La precisión ($P_c$) mide la proporción de predicciones positivas correctas y permite cuantificar falsas alarmas, que pueden consumir recursos de análisis. El recall ($R_c$) representa la proporción de flujos reales de una categoría correctamente detectados. Un recall bajo implica falsos negativos, particularmente preocupantes cuando ataques no son identificados como su categoría real. El F1-score combina ambas métricas mediante su media armónica, penalizando los desequilibrios entre precisión y recall.
-
-Para las $C=10$ categorías se emplea el promedio macro:
+La precisión ($P_c$) mide la proporción de predicciones positivas correctas y cuantifica las falsas alarmas, que consumen recursos de análisis. El recall ($R_c$) representa la proporción de flujos reales de una categoría que se detectan correctamente, de modo que un valor bajo implica falsos negativos, especialmente graves cuando un ataque no se identifica como su categoría real. El F1 combina ambas métricas mediante su media armónica y penaliza el desequilibrio entre ellas. Para las $C=10$ categorías, cada métrica se promedia como
 
 \begin{equation}
 M_{\mathrm{macro}}=
@@ -328,11 +426,11 @@ M_{\mathrm{macro}}=
 \quad M\in\{P,R,F1\}.
 \end{equation}
 
-A diferencia del promedio micro, que agrega las predicciones de todas las clases, y del promedio ponderado, que considera su frecuencia, el promedio macro otorga igual importancia a cada categoría. Esto evita que el desempeño sobre \texttt{Benign} domine la evaluación y permite valorar ataques minoritarios como \texttt{Worms}. Sin embargo, el F1 macro no distingue la gravedad de confundir dos familias de ataque frente a clasificar un ataque como tráfico benigno. Por ello, se complementa con recall por clase y matrices de confusión, que permiten identificar errores específicos y categorías difíciles de distinguir.
+A diferencia del promedio micro, que agrega las predicciones de todas las clases, y del ponderado, que las pesa según su frecuencia, el macro F1 otorga igual importancia a cada categoría. Esto evita que \texttt{Benign} domine la evaluación y permite valorar ataques minoritarios como \texttt{Worms}. No obstante, no distingue la gravedad de confundir dos familias de ataque frente a clasificar un ataque como tráfico benigno, por lo que se complementa con el recall por clase y las matrices de confusión, que revelan errores específicos y categorías difíciles de distinguir.
 
 \subsection{Agregación y selección de modelos}
 
-El desempeño de cada configuración se resume mediante la media y desviación estándar muestral del F1 macro entre las $K=5$ particiones:
+Para cada configuración se calculan la media y la desviación estándar muestral del macro F1 a lo largo de las $K=5$ particiones, según
 
 \begin{equation}
 \begin{aligned}
@@ -344,12 +442,17 @@ s_{F1} &= \sqrt{
 \end{aligned}
 \end{equation}
 
-La media resume el rendimiento entre particiones, mientras que la desviación estándar permite evaluar su estabilidad: valores menores indican resultados más consistentes, aunque no garantizan una mejor generalización.
-
-El script \texttt{k-foldCV.py} selecciona las configuraciones mediante un criterio lexicográfico: mayor F1 macro promedio, seguido de mayor recall macro, mayor precisión macro y menor desviación estándar de F1. Se comparan diez variantes de preprocesamiento y posteriormente los hiperparámetros de cada algoritmo. Finalmente, los modelos seleccionados se reentrenan y evalúan sobre el conjunto de prueba reservado \cite{repo}.
+La media describe el rendimiento promedio y la desviación estándar su estabilidad entre particiones, pero ninguna de las dos determina por sí sola la configuración ganadora. Esta se define aplicando una jerarquía de criterios en la que las configuraciones se ordenan primero por mayor macro F1 promedio y, ante empates, por mayor recall macro, luego por mayor precisión macro y, por último, por menor desviación estándar del macro F1.
 
 
 \section{Resultados y análisis}
+
+\subsection{Presentación de resultados}
+
+\subsection{Comparación de modelos}
+
+\subsection{Análisis de errores e interpretación}
+
 \section{Discusión y limitaciones}
 \section{Conclusiones}
 

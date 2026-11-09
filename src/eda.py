@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 BASE = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE / "data" / "raw"
 TABLAS_DIR = BASE / "data" / "eda" / "tablas"
-FIGURAS_DIR = BASE / "data" / "eda" / "figuras"
+FIGURAS_DIR = BASE / "data" / "eda" / "figs"
 TABLAS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURAS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -295,7 +295,7 @@ _guardar_csv(dup_clase, "duplicados_por_clase.csv")
 # ===========================================================================
 # 2. FIGURAS DEL INFORME (renumeradas en orden de aparición)
 # ===========================================================================
-print("\n=== 2. FIGURAS (guardadas en data/eda/figuras/) ===")
+print("\n=== 2. FIGURAS (guardadas en data/eda/figs/) ===")
 
 print("\n[fig01] distribución del target")
 def _barras_clases(ax, s, titulo, leyenda=False):

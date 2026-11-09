@@ -4,6 +4,7 @@
 **/checkpoints
 **/_inputs
 **/predicciones.parquet
+**/cont.tex
 src/benchmark-local.py
 dataset/
 $tmp/
