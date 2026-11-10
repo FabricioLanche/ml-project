@@ -444,16 +444,97 @@ s_{F1} &= \sqrt{
 
 La media describe el rendimiento promedio y la desviación estándar su estabilidad entre particiones, pero ninguna de las dos determina por sí sola la configuración ganadora. Esta se define aplicando una jerarquía de criterios en la que las configuraciones se ordenan primero por mayor macro F1 promedio y, ante empates, por mayor recall macro, luego por mayor precisión macro y, por último, por menor desviación estándar del macro F1.
 
-
 \section{Resultados y análisis}
 
 \subsection{Presentación de resultados}
 
+Las dos primeras fases fijaron la configuración de cada modelo sin intervención del conjunto de prueba. En la fase 1, Random Forest se orientó hacia la celda G05, que excluye las variables \texttt{ct\_*} e incorpora la razón de asimetría de bytes, mientras que la regresión logística y el SVM conservaron dichas variables y adoptaron la razón de bytes (G04) y de paquetes (G02), respectivamente, de modo que el ensamble opera con 34 variables y los modelos lineales con 44. En la fase 2, Random Forest quedó con 100 árboles, profundidad máxima 25, un tercio de las variables por nodo y pesos de clase balanceados, y los modelos lineales con regularización nula y pesos proporcionales a $1/\sqrt{\text{frecuencia}}$.
+
+El macro F1 de validación fue $0.694\pm0.171$ para Random Forest, $0.590\pm0.231$ para regresión logística y $0.564\pm0.246$ para el SVM, y el mismo orden se mantuvo sobre los 304\,499 flujos de prueba, con 0.609, 0.490 y 0.452. La exactitud, en cambio, varió poco, con 0.965, 0.953 y 0.951 en prueba y caídas de 0.015, 0.023 y 0.024 respecto de la validación, frente a descensos de 0.085, 0.100 y 0.111 en el macro F1, entre cuatro y seis veces mayores, lo que evidencia que la exactitud enmascara el deterioro en las clases minoritarias.
+
+La Fig.~\ref{fig:metricas_prueba} desglosa las métricas de prueba. La brecha entre exactitud y macro F1, de 0.356, 0.463 y 0.499, cuantifica el costo de evaluar con la clase mayoritaria como referencia, y el recall macro superior a la precisión macro en los tres modelos refleja el efecto de los pesos de clase, que priorizan la cobertura de las categorías minoritarias a costa de un mayor número de falsos positivos.
+
+\begin{figure*}[!b]
+\centering
+\includegraphics[width=0.85\textwidth,keepaspectratio]{output/resultados_fase3_metricas.png}
+\caption{Métricas finales sobre el conjunto de prueba.}
+\label{fig:metricas_prueba}
+\end{figure*}
+
+\begin{table}[!t]
+\centering
+\caption{Complejidad de los modelos finales.}
+\label{tab:parametros_finales}
+\footnotesize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}p{0.22\columnwidth} p{0.34\columnwidth} p{0.36\columnwidth}@{}}
+\hline
+\textbf{Modelo} & \textbf{Parámetros aprendidos} & \textbf{Tamaño} \\
+\hline
+Random Forest & 100 árboles, 74 variables codificadas & 1.56M nodos, 782k hojas, prof. 25 \\
+Regresión logística & 840 coeficientes + 10 interceptos, 84 variables & 840 no nulos, matriz $10\times84$ \\
+SVM lineal & 840 coeficientes + 10 interceptos, 84 variables & 790 no nulos, 10 clasificadores \\
+\hline
+\end{tabular}
+\end{table}
+
+La Tabla~\ref{tab:parametros_finales} contrasta la capacidad de los modelos finales. Random Forest es el de mayor complejidad, con 1.56M nodos y una mediana de tres observaciones por hoja, lo que indica árboles profundos que se ajustan a patrones muy específicos. Los modelos lineales, en cambio, se limitan a 840 coeficientes y 10 interceptos, todos no nulos en la regresión logística y con 50 coeficientes anulados en el SVM.
+
 \subsection{Comparación de modelos}
+
+Random Forest fue el mejor modelo en las cuatro métricas. Su macro F1 superó en 0.119 a la regresión logística y en 0.157 al SVM, con una ventaja mayor en precisión (0.168 y 0.200) que en recall (0.087 y 0.147), de modo que el ensamble no solo recupera más flujos de ataque sino que concentra mejor sus predicciones. Con una precisión macro de 0.618, cerca de tres de cada cinco predicciones positivas de una clase son correctas, frente a 0.450 y 0.418 en los modelos lineales.
+
+Entre estos últimos, la regresión logística superó al SVM en 0.038 de macro F1, 0.061 de recall y 0.031 de precisión, una ventaja que también se observa en la validación, aunque con una dispersión entre particiones elevada que se retoma al discutir las limitaciones del estudio.
+
+La ventaja de Random Forest no es uniforme, como muestra la Fig.~\ref{fig:f1_clases}. Se concentra en DoS y Worms, donde alcanza F1 de 0.388 y 0.319 frente a valores que en los modelos lineales no superan 0.13, y en Reconnaissance, Shellcode y Generic, donde supera a la regresión logística por un margen de entre 0.10 y 0.22 puntos. Analysis y Backdoors permanecen por debajo de 0.26 en los tres modelos, mientras que Benign, con F1 cercano a 0.99 en todos, sostiene la exactitud global. Por ello, Random Forest ofrece el mejor compromiso entre cobertura y precisión, aunque su macro F1 de 0.609 confirma que las familias minoritarias siguen siendo un problema abierto.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth,keepaspectratio]{output/resultados_fase3_heatmap_clases.png}
+\caption{F1 por clase sobre el conjunto de prueba.}
+\label{fig:f1_clases}
+\end{figure}
 
 \subsection{Análisis de errores e interpretación}
 
+
 \section{Discusión y limitaciones}
+
+
+\begin{table}[!h]
+\centering
+\caption{Desempeño en validación (media $\pm$ desviación estándar entre las cinco particiones) y en prueba. $\Delta$ es la diferencia entre ambos.}
+\label{tab:val_vs_prueba}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lccc@{}}
+\hline
+\textbf{Modelo} & \textbf{Validación} & \textbf{Prueba} & \textbf{$\Delta$} \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Exactitud}} \\
+Random Forest & $0.980\pm0.020$ & 0.965 & 0.015 \\
+Reg. logística & $0.977\pm0.023$ & 0.953 & 0.023 \\
+SVM lineal & $0.975\pm0.024$ & 0.951 & 0.024 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Precisión macro}} \\
+Random Forest & $0.681\pm0.180$ & 0.618 & 0.062 \\
+Reg. logística & $0.560\pm0.249$ & 0.450 & 0.111 \\
+SVM lineal & $0.542\pm0.257$ & 0.418 & 0.123 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Recall macro}} \\
+Random Forest & $0.769\pm0.130$ & 0.685 & 0.085 \\
+Reg. logística & $0.688\pm0.176$ & 0.598 & 0.090 \\
+SVM lineal & $0.639\pm0.204$ & 0.537 & 0.102 \\
+\hline
+\multicolumn{4}{@{}l}{\textit{Macro F1}} \\
+Random Forest & $0.694\pm0.171$ & 0.609 & 0.085 \\
+Reg. logística & $0.590\pm0.231$ & 0.490 & 0.100 \\
+SVM lineal & $0.564\pm0.246$ & 0.452 & 0.111 \\
+\hline
+\end{tabular}
+\end{table}
+
 \section{Conclusiones}
 
 \begin{thebibliography}{00}
