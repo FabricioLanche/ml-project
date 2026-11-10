@@ -1,0 +1,4 @@
+modelo,parametros,cantidad,detalle
+Random Forest,Estructura de árboles,"100 árboles; 1,564,686 nodos","782,393 hojas; profundidad máxima 25; media 25.0"
+Regresión logística,Coeficientes + interceptos,840 coeficientes + 10 interceptos,"matriz 10x84; rango [-9.15, 5.73]; L2 28.87; interceptos [-20.22, 46.45]"
+SVM lineal,Coeficientes + interceptos,840 coeficientes + 10 interceptos,"10 clasificadores de 84; 790 no nulos; rango [-6.74, 1.09]; L2 10.19; interceptos [-18.55, 6.03]"
