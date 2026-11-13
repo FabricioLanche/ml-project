@@ -1,0 +1,11 @@
+real\predicha,Analysis,Backdoors,Benign,DoS,Exploits,Fuzzers,Generic,Reconnaissance,Shellcode,Worms
+Analysis,367,64,86,5,13,1,0,0,0,0
+Backdoors,363,159,3,5,12,3,1,2,5,1
+Benign,112,4,277110,16,255,5343,3,17,2,0
+DoS,355,94,56,370,408,50,18,15,32,1
+Exploits,369,95,171,69,5708,127,58,208,51,60
+Fuzzers,352,92,316,12,72,3980,3,12,3,9
+Generic,353,92,9,19,99,43,3810,4,11,3
+Reconnaissance,352,92,4,10,183,7,0,1884,0,3
+Shellcode,0,1,0,3,34,8,4,0,309,0
+Worms,0,0,1,0,17,2,1,0,0,23
