@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.StringIndexerModel","timestamp":1794048895875,"sparkVersion":"4.2.0","uid":"StringIndexer_e112e9c6cd76","paramMap":{"handleInvalid":"keep","inputCol":"dsport_franja","outputCol":"dsport_franja__idx"},"defaultParamMap":{"handleInvalid":"error","outputCol":"StringIndexer_e112e9c6cd76__output","stringOrderType":"frequencyDesc"}}

@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.OneHotEncoderModel","timestamp":1794048897299,"sparkVersion":"4.2.0","uid":"OneHotEncoder_7bbf4004960f","paramMap":{"handleInvalid":"keep","inputCol":"dsport_franja__idx","outputCol":"dsport_franja__ohc"},"defaultParamMap":{"dropLast":true,"handleInvalid":"error","outputCol":"OneHotEncoder_7bbf4004960f__output"}}
