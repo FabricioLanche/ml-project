@@ -1,0 +1,115 @@
+2026-11-05 09:10:45 INFO comando argv=['src/pipeline-train.py', '--fase', '2', '--modelos', 'logreg', '--master', 'local[8]', '--driver-memory', '8g']
+2026-11-05 09:10:45 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-05 09:10:45 INFO configuracion_spark master=local[8] driver_memory_arg=8g shuffle_partitions=32 paralelismo_ovr=3 fases=[2] iteracion=None iteraciones=1 modelos=['logreg'] celdas=todas rondas=todas reanudar=False no_escala=False
+2026-11-05 09:10:45 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/05 09:10:51 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/05 09:10:51 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/05 09:10:52 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-05 09:10:54 INFO inicio_fase iteracion=1 fase=2
+2026-11-05 09:10:55 INFO inicio_celda fase=2 iteracion=1 celda=G04 unidades_pendientes=40
+2026-11-05 09:10:55 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r1
+26/11/05 09:11:03 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+2026-11-05 09:11:09 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r1 duracion_s=14.4
+2026-11-05 09:11:09 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+netlib-blas: JNI_OnLoad: dlopen(libblas.so.3) failed: libblas.so.3: cannot open shared object file: No such file or directory
+2026-11-05 09:13:14 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_1 duracion_s=134.4
+2026-11-05 09:13:14 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:15:12 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_2 duracion_s=128.2
+2026-11-05 09:15:12 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:17:04 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_3 duracion_s=122.4
+2026-11-05 09:17:04 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:18:57 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_4 duracion_s=122.8
+2026-11-05 09:18:57 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:20:50 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_5 duracion_s=120.3
+2026-11-05 09:20:50 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:21:23 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_6 duracion_s=37.5
+2026-11-05 09:21:23 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:21:49 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_7 duracion_s=26.2
+2026-11-05 09:21:49 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:22:12 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r1 modelo=logreg hiperparametro=hiperparametro_8 duracion_s=25.5
+2026-11-05 09:22:12 INFO fin_fold fase=2 iteracion=1 celda=G04 fold=r1 estado=completado
+2026-11-05 09:22:12 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r2
+2026-11-05 09:22:19 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r2 duracion_s=7.1
+2026-11-05 09:22:19 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:24:24 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_1 duracion_s=136.9
+2026-11-05 09:24:24 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:26:26 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_2 duracion_s=131.7
+2026-11-05 09:26:26 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:28:18 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_3 duracion_s=122.7
+2026-11-05 09:28:18 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:30:16 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_4 duracion_s=124.7
+2026-11-05 09:30:16 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:32:10 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_5 duracion_s=124.0
+2026-11-05 09:32:10 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:32:45 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_6 duracion_s=37.3
+2026-11-05 09:32:45 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:33:08 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_7 duracion_s=26.1
+2026-11-05 09:33:08 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:33:33 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r2 modelo=logreg hiperparametro=hiperparametro_8 duracion_s=27.1
+2026-11-05 09:33:33 INFO fin_fold fase=2 iteracion=1 celda=G04 fold=r2 estado=completado
+2026-11-05 09:33:33 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r3
+2026-11-05 09:33:39 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r3 duracion_s=6.5
+2026-11-05 09:33:39 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:35:45 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_1 duracion_s=135.2
+2026-11-05 09:35:45 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:37:43 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_2 duracion_s=130.4
+2026-11-05 09:37:43 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:39:34 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_3 duracion_s=119.0
+2026-11-05 09:39:34 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:41:35 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_4 duracion_s=130.6
+2026-11-05 09:41:35 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:43:23 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_5 duracion_s=118.1
+2026-11-05 09:43:23 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:43:59 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_6 duracion_s=38.1
+2026-11-05 09:43:59 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:44:24 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_7 duracion_s=27.4
+2026-11-05 09:44:24 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:44:52 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r3 modelo=logreg hiperparametro=hiperparametro_8 duracion_s=30.3
+2026-11-05 09:44:52 INFO fin_fold fase=2 iteracion=1 celda=G04 fold=r3 estado=completado
+2026-11-05 09:44:52 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r4
+2026-11-05 09:44:58 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r4 duracion_s=6.6
+2026-11-05 09:44:58 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:46:52 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_1 duracion_s=123.7
+2026-11-05 09:46:52 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:48:38 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_2 duracion_s=116.3
+2026-11-05 09:48:38 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:50:19 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_3 duracion_s=108.4
+2026-11-05 09:50:19 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:52:54 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_4 duracion_s=118.6
+2026-11-05 09:52:54 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:54:42 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_5 duracion_s=110.0
+2026-11-05 09:54:42 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 09:55:15 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_6 duracion_s=35.1
+2026-11-05 09:55:15 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:55:39 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_7 duracion_s=24.8
+2026-11-05 09:55:39 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:56:05 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r4 modelo=logreg hiperparametro=hiperparametro_8 duracion_s=27.9
+2026-11-05 09:56:05 INFO fin_fold fase=2 iteracion=1 celda=G04 fold=r4 estado=completado
+2026-11-05 09:56:05 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r5
+2026-11-05 09:56:11 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G04 fold=r5 duracion_s=6.2
+2026-11-05 09:56:11 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_1 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 09:57:56 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_1 duracion_s=114.3
+2026-11-05 09:57:56 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_2 params={'maxIter': 500, 'regParam': 0.0, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 09:59:42 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_2 duracion_s=112.3
+2026-11-05 09:59:42 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 10:01:24 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_3 duracion_s=108.6
+2026-11-05 10:01:24 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 10:03:07 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_4 duracion_s=111.4
+2026-11-05 10:03:07 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 10:04:52 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_5 duracion_s=111.5
+2026-11-05 10:04:52 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'ninguno'}
+2026-11-05 10:05:24 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_6 duracion_s=34.8
+2026-11-05 10:05:24 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'raiz'}
+2026-11-05 10:05:46 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_7 duracion_s=24.2
+2026-11-05 10:05:46 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'elasticNetParam': 0.0, 'tol': 1e-06, 'standardization': False, 'family': 'multinomial', 'pesoClases': 'balanceado'}
+2026-11-05 10:06:12 INFO fin_entrenamiento fase=2 iteracion=1 celda=G04 fold=r5 modelo=logreg hiperparametro=hiperparametro_8 duracion_s=25.9
+2026-11-05 10:06:12 INFO fin_fold fase=2 iteracion=1 celda=G04 fold=r5 estado=completado
+2026-11-05 10:06:12 INFO fin_celda fase=2 iteracion=1 celda=G04 duracion_s=3526.9
+2026-11-05 10:06:12 INFO fin_fase iteracion=1 fase=2 duracion_s=3527.3
+2026-11-05 10:06:12 INFO ejecucion_completada
+2026-11-05 10:06:12 INFO cierre_spark

@@ -1,0 +1,171 @@
+2026-11-05 17:52:20 INFO comando argv=['src/pipeline-train.py', '--fase', '3', '--modelos', 'rf', '--master', 'local[8]', '--driver-memory', '8g']
+2026-11-05 17:52:20 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-05 17:52:20 INFO configuracion_spark master=local[8] driver_memory_arg=8g shuffle_partitions=32 paralelismo_ovr=3 fases=[3] iteracion=None iteraciones=1 modelos=['rf'] celdas=todas rondas=todas reanudar=False no_escala=False
+2026-11-05 17:52:20 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/05 17:52:26 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/05 17:52:26 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/05 17:52:27 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-05 17:52:32 INFO inicio_fase iteracion=1 fase=3
+2026-11-05 17:52:32 INFO inicio_entrenamiento_final iteracion=1 modelo=rf celda=G05
+26/11/05 17:52:56 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+26/11/05 17:54:28 WARN DAGScheduler: Broadcasting large task binary with size 1554.0 KiB
+26/11/05 17:54:35 WARN DAGScheduler: Broadcasting large task binary with size 2.5 MiB
+26/11/05 17:54:42 WARN DAGScheduler: Broadcasting large task binary with size 4.2 MiB
+26/11/05 17:54:51 WARN DAGScheduler: Broadcasting large task binary with size 6.9 MiB
+26/11/05 17:54:59 WARN DAGScheduler: Broadcasting large task binary with size 1340.2 KiB
+26/11/05 17:55:00 WARN DAGScheduler: Broadcasting large task binary with size 10.3 MiB
+26/11/05 17:55:11 WARN DAGScheduler: Broadcasting large task binary with size 1903.0 KiB
+26/11/05 17:55:13 WARN DAGScheduler: Broadcasting large task binary with size 10.9 MiB
+26/11/05 17:55:27 WARN DAGScheduler: Broadcasting large task binary with size 1898.9 KiB
+26/11/05 17:55:31 WARN DAGScheduler: Broadcasting large task binary with size 12.0 MiB
+26/11/05 17:55:37 WARN DAGScheduler: Broadcasting large task binary with size 1899.8 KiB
+26/11/05 17:55:38 WARN DAGScheduler: Broadcasting large task binary with size 13.4 MiB
+26/11/05 17:55:43 WARN DAGScheduler: Broadcasting large task binary with size 1894.3 KiB
+26/11/05 17:55:49 WARN DAGScheduler: Broadcasting large task binary with size 15.2 MiB
+26/11/05 17:55:57 WARN DAGScheduler: Broadcasting large task binary with size 1897.1 KiB
+26/11/05 17:55:59 WARN DAGScheduler: Broadcasting large task binary with size 17.5 MiB
+26/11/05 17:56:03 WARN DAGScheduler: Broadcasting large task binary with size 1901.6 KiB
+26/11/05 17:56:05 WARN DAGScheduler: Broadcasting large task binary with size 20.0 MiB
+26/11/05 17:56:09 WARN DAGScheduler: Broadcasting large task binary with size 1900.2 KiB
+26/11/05 17:56:11 WARN DAGScheduler: Broadcasting large task binary with size 23.0 MiB
+26/11/05 17:56:14 WARN DAGScheduler: Broadcasting large task binary with size 1898.0 KiB
+26/11/05 17:56:16 WARN DAGScheduler: Broadcasting large task binary with size 26.6 MiB
+26/11/05 17:56:18 WARN DAGScheduler: Broadcasting large task binary with size 1898.7 KiB
+26/11/05 17:56:20 WARN DAGScheduler: Broadcasting large task binary with size 31.4 MiB
+26/11/05 17:56:31 WARN DAGScheduler: Broadcasting large task binary with size 1893.3 KiB
+26/11/05 17:56:33 WARN DAGScheduler: Broadcasting large task binary with size 36.3 MiB
+26/11/05 17:56:36 WARN DAGScheduler: Broadcasting large task binary with size 1896.4 KiB
+26/11/05 17:56:38 WARN DAGScheduler: Broadcasting large task binary with size 42.4 MiB
+26/11/05 17:56:41 WARN DAGScheduler: Broadcasting large task binary with size 1902.2 KiB
+26/11/05 17:56:43 WARN DAGScheduler: Broadcasting large task binary with size 47.3 MiB
+26/11/05 17:56:47 WARN DAGScheduler: Broadcasting large task binary with size 1895.1 KiB
+26/11/05 17:56:49 WARN DAGScheduler: Broadcasting large task binary with size 53.1 MiB
+26/11/05 17:56:53 WARN DAGScheduler: Broadcasting large task binary with size 1897.2 KiB
+26/11/05 17:56:55 WARN DAGScheduler: Broadcasting large task binary with size 58.9 MiB
+26/11/05 17:56:59 WARN DAGScheduler: Broadcasting large task binary with size 1899.3 KiB
+26/11/05 17:57:02 WARN DAGScheduler: Broadcasting large task binary with size 64.6 MiB
+26/11/05 17:57:06 WARN DAGScheduler: Broadcasting large task binary with size 1899.8 KiB
+26/11/05 17:57:08 WARN DAGScheduler: Broadcasting large task binary with size 21.6 MiB
+26/11/05 17:57:11 WARN DAGScheduler: Broadcasting large task binary with size 1896.3 KiB
+26/11/05 17:57:13 WARN DAGScheduler: Broadcasting large task binary with size 25.1 MiB
+26/11/05 17:57:17 WARN DAGScheduler: Broadcasting large task binary with size 1901.4 KiB
+26/11/05 17:57:19 WARN DAGScheduler: Broadcasting large task binary with size 28.5 MiB
+26/11/05 17:57:22 WARN DAGScheduler: Broadcasting large task binary with size 1899.8 KiB
+26/11/05 17:57:24 WARN DAGScheduler: Broadcasting large task binary with size 29.3 MiB
+26/11/05 17:57:26 WARN DAGScheduler: Broadcasting large task binary with size 1901.3 KiB
+26/11/05 17:57:29 WARN DAGScheduler: Broadcasting large task binary with size 34.2 MiB
+26/11/05 17:57:33 WARN DAGScheduler: Broadcasting large task binary with size 1898.3 KiB
+26/11/05 17:57:35 WARN DAGScheduler: Broadcasting large task binary with size 39.1 MiB
+26/11/05 17:57:38 WARN DAGScheduler: Broadcasting large task binary with size 1890.1 KiB
+26/11/05 17:57:40 WARN DAGScheduler: Broadcasting large task binary with size 41.7 MiB
+26/11/05 17:57:44 WARN DAGScheduler: Broadcasting large task binary with size 1900.2 KiB
+26/11/05 17:57:47 WARN DAGScheduler: Broadcasting large task binary with size 43.3 MiB
+26/11/05 17:57:53 WARN DAGScheduler: Broadcasting large task binary with size 1899.5 KiB
+26/11/05 17:57:56 WARN DAGScheduler: Broadcasting large task binary with size 49.0 MiB
+26/11/05 17:57:59 WARN DAGScheduler: Broadcasting large task binary with size 1909.0 KiB
+26/11/05 17:58:01 WARN DAGScheduler: Broadcasting large task binary with size 51.6 MiB
+26/11/05 17:58:05 WARN DAGScheduler: Broadcasting large task binary with size 1897.4 KiB
+26/11/05 17:58:07 WARN DAGScheduler: Broadcasting large task binary with size 50.5 MiB
+26/11/05 17:58:11 WARN DAGScheduler: Broadcasting large task binary with size 1905.5 KiB
+26/11/05 17:58:14 WARN DAGScheduler: Broadcasting large task binary with size 43.2 MiB
+26/11/05 17:58:18 WARN DAGScheduler: Broadcasting large task binary with size 1895.4 KiB
+26/11/05 17:58:20 WARN DAGScheduler: Broadcasting large task binary with size 29.1 MiB
+26/11/05 17:58:24 WARN DAGScheduler: Broadcasting large task binary with size 1900.7 KiB
+26/11/05 17:58:26 WARN DAGScheduler: Broadcasting large task binary with size 23.5 MiB
+26/11/05 17:58:29 WARN DAGScheduler: Broadcasting large task binary with size 1897.8 KiB
+26/11/05 17:58:31 WARN DAGScheduler: Broadcasting large task binary with size 23.8 MiB
+26/11/05 17:58:35 WARN DAGScheduler: Broadcasting large task binary with size 1896.1 KiB
+26/11/05 17:58:37 WARN DAGScheduler: Broadcasting large task binary with size 27.4 MiB
+26/11/05 17:58:39 WARN DAGScheduler: Broadcasting large task binary with size 1896.9 KiB
+26/11/05 17:58:41 WARN DAGScheduler: Broadcasting large task binary with size 32.2 MiB
+26/11/05 17:58:44 WARN DAGScheduler: Broadcasting large task binary with size 1892.5 KiB
+26/11/05 17:58:46 WARN DAGScheduler: Broadcasting large task binary with size 33.2 MiB
+26/11/05 17:58:49 WARN DAGScheduler: Broadcasting large task binary with size 1901.1 KiB
+26/11/05 17:58:50 WARN DAGScheduler: Broadcasting large task binary with size 35.2 MiB
+26/11/05 17:58:53 WARN DAGScheduler: Broadcasting large task binary with size 1898.7 KiB
+26/11/05 17:58:55 WARN DAGScheduler: Broadcasting large task binary with size 40.1 MiB
+26/11/05 17:58:58 WARN DAGScheduler: Broadcasting large task binary with size 1901.0 KiB
+26/11/05 17:59:01 WARN DAGScheduler: Broadcasting large task binary with size 45.6 MiB
+26/11/05 17:59:07 WARN DAGScheduler: Broadcasting large task binary with size 1901.7 KiB
+26/11/05 17:59:11 WARN DAGScheduler: Broadcasting large task binary with size 45.3 MiB
+26/11/05 17:59:16 WARN DAGScheduler: Broadcasting large task binary with size 1901.0 KiB
+26/11/05 17:59:18 WARN DAGScheduler: Broadcasting large task binary with size 50.2 MiB
+26/11/05 17:59:22 WARN DAGScheduler: Broadcasting large task binary with size 1896.3 KiB
+26/11/05 17:59:24 WARN DAGScheduler: Broadcasting large task binary with size 49.4 MiB
+26/11/05 17:59:28 WARN DAGScheduler: Broadcasting large task binary with size 1904.5 KiB
+26/11/05 17:59:30 WARN DAGScheduler: Broadcasting large task binary with size 51.4 MiB
+26/11/05 17:59:35 WARN DAGScheduler: Broadcasting large task binary with size 1902.2 KiB
+26/11/05 17:59:36 WARN DAGScheduler: Broadcasting large task binary with size 28.0 MiB
+26/11/05 17:59:41 WARN DAGScheduler: Broadcasting large task binary with size 1903.0 KiB
+26/11/05 17:59:44 WARN DAGScheduler: Broadcasting large task binary with size 22.9 MiB
+26/11/05 17:59:51 WARN DAGScheduler: Broadcasting large task binary with size 1893.3 KiB
+26/11/05 17:59:53 WARN DAGScheduler: Broadcasting large task binary with size 22.6 MiB
+26/11/05 17:59:57 WARN DAGScheduler: Broadcasting large task binary with size 1899.8 KiB
+26/11/05 17:59:59 WARN DAGScheduler: Broadcasting large task binary with size 22.8 MiB
+26/11/05 18:00:06 WARN DAGScheduler: Broadcasting large task binary with size 1892.8 KiB
+26/11/05 18:00:08 WARN DAGScheduler: Broadcasting large task binary with size 26.0 MiB
+26/11/05 18:00:12 WARN DAGScheduler: Broadcasting large task binary with size 1901.4 KiB
+26/11/05 18:00:14 WARN DAGScheduler: Broadcasting large task binary with size 30.2 MiB
+26/11/05 18:00:17 WARN DAGScheduler: Broadcasting large task binary with size 1896.0 KiB
+26/11/05 18:00:18 WARN DAGScheduler: Broadcasting large task binary with size 35.0 MiB
+26/11/05 18:00:21 WARN DAGScheduler: Broadcasting large task binary with size 1903.4 KiB
+26/11/05 18:00:23 WARN DAGScheduler: Broadcasting large task binary with size 36.7 MiB
+26/11/05 18:00:26 WARN DAGScheduler: Broadcasting large task binary with size 1903.3 KiB
+26/11/05 18:00:27 WARN DAGScheduler: Broadcasting large task binary with size 33.0 MiB
+26/11/05 18:00:30 WARN DAGScheduler: Broadcasting large task binary with size 1900.4 KiB
+26/11/05 18:00:32 WARN DAGScheduler: Broadcasting large task binary with size 37.9 MiB
+26/11/05 18:00:35 WARN DAGScheduler: Broadcasting large task binary with size 1900.8 KiB
+26/11/05 18:00:38 WARN DAGScheduler: Broadcasting large task binary with size 43.4 MiB
+26/11/05 18:00:41 WARN DAGScheduler: Broadcasting large task binary with size 1897.7 KiB
+26/11/05 18:00:42 WARN DAGScheduler: Broadcasting large task binary with size 45.7 MiB
+26/11/05 18:00:46 WARN DAGScheduler: Broadcasting large task binary with size 1899.6 KiB
+26/11/05 18:00:48 WARN DAGScheduler: Broadcasting large task binary with size 50.6 MiB
+26/11/05 18:00:51 WARN DAGScheduler: Broadcasting large task binary with size 1901.6 KiB
+26/11/05 18:00:53 WARN DAGScheduler: Broadcasting large task binary with size 50.5 MiB
+26/11/05 18:00:57 WARN DAGScheduler: Broadcasting large task binary with size 1897.8 KiB
+26/11/05 18:00:59 WARN DAGScheduler: Broadcasting large task binary with size 46.1 MiB
+26/11/05 18:01:05 WARN DAGScheduler: Broadcasting large task binary with size 1902.7 KiB
+26/11/05 18:01:08 WARN DAGScheduler: Broadcasting large task binary with size 19.6 MiB
+26/11/05 18:01:10 WARN DAGScheduler: Broadcasting large task binary with size 1452.8 KiB
+26/11/05 18:01:12 WARN DAGScheduler: Broadcasting large task binary with size 23.5 MiB
+26/11/05 18:01:16 WARN DAGScheduler: Broadcasting large task binary with size 1617.9 KiB
+26/11/05 18:01:17 WARN DAGScheduler: Broadcasting large task binary with size 27.7 MiB
+26/11/05 18:01:20 WARN DAGScheduler: Broadcasting large task binary with size 1718.7 KiB
+26/11/05 18:01:22 WARN DAGScheduler: Broadcasting large task binary with size 28.7 MiB
+26/11/05 18:01:26 WARN DAGScheduler: Broadcasting large task binary with size 1817.6 KiB
+26/11/05 18:01:28 WARN DAGScheduler: Broadcasting large task binary with size 30.1 MiB
+26/11/05 18:01:31 WARN DAGScheduler: Broadcasting large task binary with size 1892.2 KiB
+26/11/05 18:01:33 WARN DAGScheduler: Broadcasting large task binary with size 34.5 MiB
+26/11/05 18:01:37 WARN DAGScheduler: Broadcasting large task binary with size 1899.9 KiB
+26/11/05 18:01:39 WARN DAGScheduler: Broadcasting large task binary with size 36.4 MiB
+26/11/05 18:01:42 WARN DAGScheduler: Broadcasting large task binary with size 1896.0 KiB
+26/11/05 18:01:44 WARN DAGScheduler: Broadcasting large task binary with size 37.9 MiB
+26/11/05 18:01:47 WARN DAGScheduler: Broadcasting large task binary with size 1879.2 KiB
+26/11/05 18:01:49 WARN DAGScheduler: Broadcasting large task binary with size 39.0 MiB
+26/11/05 18:01:52 WARN DAGScheduler: Broadcasting large task binary with size 1825.0 KiB
+26/11/05 18:01:54 WARN DAGScheduler: Broadcasting large task binary with size 43.6 MiB
+26/11/05 18:01:58 WARN DAGScheduler: Broadcasting large task binary with size 1740.4 KiB
+26/11/05 18:02:00 WARN DAGScheduler: Broadcasting large task binary with size 41.4 MiB
+26/11/05 18:02:03 WARN DAGScheduler: Broadcasting large task binary with size 1541.2 KiB
+26/11/05 18:02:05 WARN DAGScheduler: Broadcasting large task binary with size 32.0 MiB
+26/11/05 18:02:07 WARN DAGScheduler: Broadcasting large task binary with size 1142.6 KiB
+26/11/05 18:02:08 WARN DAGScheduler: Broadcasting large task binary with size 28.3 MiB
+26/11/05 18:02:11 WARN DAGScheduler: Broadcasting large task binary with size 26.9 MiB
+26/11/05 18:02:14 WARN DAGScheduler: Broadcasting large task binary with size 21.7 MiB
+26/11/05 18:02:16 WARN DAGScheduler: Broadcasting large task binary with size 20.0 MiB
+26/11/05 18:02:18 WARN DAGScheduler: Broadcasting large task binary with size 6.6 MiB
+26/11/05 18:02:18 WARN DAGScheduler: Broadcasting large task binary with size 3.4 MiB
+26/11/05 18:02:19 WARN DAGScheduler: Broadcasting large task binary with size 3.4 MiB
+26/11/05 18:02:38 WARN DAGScheduler: Broadcasting large task binary with size 200.8 MiB
+26/11/05 18:03:32 WARN TaskSetManager: Stage 243 contains a task of very large size (49720 KiB). The maximum recommended task size is 1000 KiB.
+26/11/05 18:03:58 WARN DAGScheduler: Broadcasting large task binary with size 200.6 MiB
+26/11/05 18:04:55 WARN DAGScheduler: Broadcasting large task binary with size 200.5 MiB
+2026-11-05 18:04:57 INFO fin_entrenamiento_final iteracion=1 modelo=rf celda=G05 duracion_s=744.4
+2026-11-05 18:04:57 INFO fin_fase iteracion=1 fase=3 duracion_s=744.4
+2026-11-05 18:04:57 INFO ejecucion_completada
+2026-11-05 18:04:57 INFO cierre_spark

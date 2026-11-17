@@ -1,0 +1,63 @@
+2026-11-06 06:45:54 INFO comando argv=['src/pipeline-train.py', '--fase', '2', '--modelos', 'svm', '--reanudar', '--master', 'local[8]', '--driver-memory', '6g', '--svm-parallelism', '3', '--reiniciar-sobre-mb', '3000']
+2026-11-06 06:45:54 INFO hiperparametros=/mnt/c/Users/ADMIN/Desktop/ml-project/data/preprocessed/grid_hyperparams/hiperparametros.json
+2026-11-06 06:45:54 INFO configuracion_spark master=local[8] driver_memory_arg=6g shuffle_partitions=32 paralelismo_svm=3 fases=[2] iteracion=None iteraciones=1 modelos=['svm'] celdas=todas rondas=todas reanudar=True no_escala=False
+2026-11-06 06:45:54 INFO entorno python=3.12.3 pyspark=4.2.0 PYSPARK_SUBMIT_ARGS=no definido
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/06 06:45:59 WARN Utils: Your hostname, DESKTOP-C8HEV22, resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/11/06 06:45:59 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/11/06 06:46:00 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2026-11-06 06:46:03 INFO inicio_fase iteracion=1 fase=2
+2026-11-06 06:46:04 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_1
+2026-11-06 06:46:04 INFO checkpoint_reutilizado fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_2
+2026-11-06 06:46:04 INFO inicio_celda fase=2 iteracion=1 celda=G02 unidades_pendientes=38
+2026-11-06 06:46:04 INFO inicio_preparacion_fold fase=2 iteracion=1 celda=G02 fold=r1
+26/11/06 06:46:11 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+2026-11-06 06:46:16 INFO fin_preparacion_fold fase=2 iteracion=1 celda=G02 fold=r1 duracion_s=11.6
+2026-11-06 06:46:16 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_3 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+netlib-blas: JNI_OnLoad: dlopen(libblas.so.3) failed: libblas.so.3: cannot open shared object file: No such file or directory
+2026-11-06 06:51:03 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_3 duracion_s=303.9
+2026-11-06 06:51:03 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_4 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'raiz'}
+2026-11-06 06:56:43 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_4 duracion_s=361.3
+2026-11-06 06:56:43 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_5 params={'maxIter': 500, 'regParam': 0.0001, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'balanceado'}
+2026-11-06 07:02:32 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_5 duracion_s=370.3
+2026-11-06 07:02:32 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_6 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'ninguno'}
+2026-11-06 07:07:02 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_6 duracion_s=287.0
+2026-11-06 07:07:02 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_7 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'raiz'}
+26/11/06 07:10:34 ERROR Utils: Uncaught exception in thread executor-heartbeater
+java.lang.NullPointerException: Cannot invoke "java.util.concurrent.ConcurrentHashMap.isEmpty()" because the return value of "org.apache.spark.sql.util.PartitionKeyedAccumulator.byPartition()" is null
+	at org.apache.spark.sql.util.PartitionKeyedAccumulator.isZero(PartitionKeyedAccumulator.scala:51)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$2(Executor.scala:1536)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$2$adapted(Executor.scala:1536)
+	at scala.collection.immutable.Vector.filterImpl(Vector.scala:166)
+	at scala.collection.immutable.Vector.filterImpl(Vector.scala:116)
+	at scala.collection.StrictOptimizedIterableOps.filterNot(StrictOptimizedIterableOps.scala:220)
+	at scala.collection.StrictOptimizedIterableOps.filterNot$(StrictOptimizedIterableOps.scala:220)
+	at scala.collection.immutable.Vector.filterNot(Vector.scala:116)
+	at org.apache.spark.executor.Executor.$anonfun$reportHeartBeat$1(Executor.scala:1536)
+	at scala.collection.IterableOnceOps.foreach(IterableOnce.scala:630)
+	at scala.collection.IterableOnceOps.foreach$(IterableOnce.scala:628)
+	at scala.collection.AbstractIterable.foreach(Iterable.scala:936)
+	at org.apache.spark.executor.Executor.reportHeartBeat(Executor.scala:1530)
+	at org.apache.spark.executor.Executor.$anonfun$heartbeater$1(Executor.scala:484)
+	at scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.scala:18)
+	at org.apache.spark.util.Utils$.logUncaughtExceptions(Utils.scala:1963)
+	at org.apache.spark.Heartbeater$$anon$1.run(Heartbeater.scala:46)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:358)
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+26/11/06 07:12:25 WARN HeartbeatReceiver: Removing executor driver with no recent heartbeats: 121433 ms exceeds timeout 120000 ms
+26/11/06 07:12:25 WARN SparkContext: Killing executors is not supported by current scheduler.
+2026-11-06 07:12:50 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_7 duracion_s=368.7
+2026-11-06 07:12:50 INFO inicio_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_8 params={'maxIter': 500, 'regParam': 0.01, 'tol': 1e-06, 'standardization': False, 'pesoClases': 'balanceado'}
+2026-11-06 07:19:34 INFO fin_entrenamiento fase=2 iteracion=1 celda=G02 fold=r1 modelo=svm hiperparametro=hiperparametro_8 duracion_s=427.8
+2026-11-06 07:19:34 INFO fin_fold fase=2 iteracion=1 celda=G02 fold=r1 estado=completado
+2026-11-06 07:19:50 INFO memoria fase=2 celda=G02 fold=r1 heap_antes_mb=3287 heap_despues_mb=3276
+2026-11-06 07:19:50 WARNING reinicio_por_memoria fase=2 celda=G02 fold=r1 heap_mb=3276 limite_mb=3000
+2026-11-06 07:19:50 INFO cierre_spark
